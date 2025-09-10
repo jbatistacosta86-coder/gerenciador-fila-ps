@@ -55,7 +55,11 @@
                 <div class="flex flex-col sm:flex-row justify-between items-center">
                     <div>
                       <h1 class="text-2xl sm:text-3xl font-bold text-blue-600">Pronto Socorro - Gestão de Fila</h1>
-                      <p class="text-sm text-gray-600">ID da Sessão: <span id="session-id-display" class="font-semibold text-gray-800">Carregando...</span></p>
+                      <!-- NOVO: O ID da sessão agora é compartilhado -->
+                      <div class="flex items-center gap-2 mt-1">
+                          <p class="text-sm text-gray-600">ID da Sessão: <span id="session-id-display" class="font-semibold text-gray-800">Carregando...</span></p>
+                          <button id="copy-session-link" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-2 rounded-lg">Copiar Link</button>
+                      </div>
                     </div>
                     <nav id="navigation" class="mt-4 sm:mt-0 flex flex-wrap gap-2 justify-center">
                         <button data-view="reception" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Recepção</button>
@@ -92,7 +96,6 @@
         import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // --- ATENÇÃO: COLE SUAS CONFIGURAÇÕES AQUI ---
         const firebaseConfig = {
 			apiKey: "AIzaSyCZOU5aaxwDpK-5NiDmYolOysbPNhs9to0",
 			authDomain: "fila-de-atendimento-6b32c.firebaseapp.com",
@@ -102,37 +105,56 @@
 			appId: "1:60616234598:web:911eb2e837cfe24ae6ffa7",
 			measurementId: "G-87CDY00MBJ"
 		};
-        const geminiApiKey = "AIzaSyDG53kdnsGV6B9MxMsFyNOf1GLtPaDAo4k"; 
-        // ---------------------------------------------
-        
-        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`;
         
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Inicia a autenticação anônima assim que a página carrega
         signInAnonymously(auth).catch(error => {
             console.error("Erro na autenticação anônima:", error);
-            // Poderia mostrar uma mensagem de erro para o usuário aqui
         });
 
         const state = {
             user: null,
+            sessionId: null, // NOVO: Armazena o ID da sessão compartilhada
             patients: [],
             currentView: 'reception',
             lastCalledPatientId: null,
-            debounceTimer: null,
+            unsubscribe: null, // Armazena a função para parar de ouvir o snapshot
         };
 
         const dom = {
             sessionIdDisplay: document.getElementById('session-id-display'),
+            copySessionLinkBtn: document.getElementById('copy-session-link'),
             views: document.querySelectorAll('#main-app-container .view'),
             navButtons: document.querySelectorAll('.nav-btn'),
             loading: document.getElementById('loading'),
             modal: document.getElementById('modal'),
             modalContent: document.getElementById('modal-content'),
         };
+        
+        // --- LÓGICA DE SESSÃO COMPARTILHADA ---
+        function setupSession() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let sessionId = urlParams.get('session');
+
+            if (!sessionId) {
+                // Se não há ID na URL, cria um novo
+                sessionId = generateSessionId();
+                // E atualiza a URL sem recarregar a página
+                const newUrl = `${window.location.pathname}?session=${sessionId}`;
+                window.history.replaceState({ path: newUrl }, '', newUrl);
+            }
+            
+            state.sessionId = sessionId;
+            dom.sessionIdDisplay.textContent = sessionId;
+        }
+
+        function generateSessionId() {
+            // Gera um ID aleatório simples
+            return Math.random().toString(36).substring(2, 10).toUpperCase();
+        }
+        // ------------------------------------
 
         const renderTemplates = {
             reception: () => {
@@ -141,9 +163,9 @@
                     <h2 class="text-2xl font-semibold mb-4 text-gray-700">Recepção - Admissão de Pacientes</h2>
                     <div class="bg-white p-6 rounded-lg shadow-md mb-6">
                         <form id="add-patient-form" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                            <div class="md:col-span-2"><label for="patient-name" class="block text-sm font-medium text-gray-700">Nome Completo</label><input type="text" id="patient-name" required class="mt-1 block w-full rounded-md p-2"></div>
-                            <div><label for="patient-age" class="block text-sm font-medium text-gray-700">Idade</label><input type="number" id="patient-age" required class="mt-1 block w-full rounded-md p-2"></div>
-                            <div class="md:col-span-3 flex items-center gap-4"><div class="flex items-center h-5"><input id="is-priority" type="checkbox" class="focus:ring-blue-500 h-4 w-4 text-blue-600 rounded"></div><div class="ml-3 text-sm"><label for="is-priority" class="font-medium text-gray-700">Atendimento Prioritário?</label><p class="text-gray-500">Marque se o paciente tem prioridade legal.</p></div></div>
+                            <div class="md:col-span-2"><label for="patient-name" class="block text-sm font-medium text-gray-700">Nome Completo</label><input type="text" id="patient-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2"></div>
+                            <div><label for="patient-age" class="block text-sm font-medium text-gray-700">Idade</label><input type="number" id="patient-age" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2"></div>
+                            <div class="md:col-span-3 flex items-center gap-4"><div class="flex items-center h-5"><input id="is-priority" type="checkbox" class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"></div><div class="ml-3 text-sm"><label for="is-priority" class="font-medium text-gray-700">Atendimento Prioritário?</label><p class="text-gray-500">Marque se o paciente tem prioridade legal.</p></div></div>
                             <div class="md:col-span-3"><button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg">Adicionar Paciente</button></div>
                         </form>
                     </div>
@@ -188,9 +210,7 @@
                                    <button data-action="finish-consultation" data-id="${p.id}" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Finalizar</button>
                                </div>
                                <div class="mt-4 border-t pt-4">
-                                   <textarea data-action="save-notes" data-id="${p.id}" class="mt-1 block w-full rounded-md p-2" rows="4" placeholder="Anotações...">${p.doctorNotes || ''}</textarea>
-                                   <button data-action="generate-summary" data-id="${p.id}" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg text-sm">✨ Gerar Resumo (SOAP)</button>
-                                   <div id="soap-summary-${p.id}" class="mt-2">${p.soapSummary ? `<div class="gemini-response">${p.soapSummary}</div>` : ''}</div>
+                                   <textarea data-action="save-notes" data-id="${p.id}" class="mt-1 block w-full rounded-md p-2 border-gray-300" rows="4" placeholder="Anotações...">${p.doctorNotes || ''}</textarea>
                                </div></div>`;
                     }).join('');
                 }
@@ -221,7 +241,7 @@
                         </div>`;
             },
             monitoring: () => {
-                 const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds;
+                const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds;
                 const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter);
                 const history = state.patients.filter(p => p.callTimestamp).sort((a, b) => b.callTimestamp.seconds - a.callTimestamp.seconds).slice(0, 10);
                 const attended = state.patients.filter(p => p.status === 'atendido');
@@ -243,24 +263,28 @@
                             </div></div>`;
             }
         };
-
+        
+        // A autenticação agora prepara o terreno para a inicialização da sessão.
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 state.user = user;
-                // Exibe os primeiros 8 caracteres do ID anônimo para ser mais amigável
-                dom.sessionIdDisplay.textContent = user.uid.substring(0, 8);
+                setupSession(); // Configura ou lê o ID da sessão da URL
                 navigateTo('reception');
-                setupPatientListener();
+                setupPatientListener(); // Começa a ouvir os dados da sessão correta
             } else {
-                console.error("Usuário anônimo não autenticado. A aplicação pode não funcionar.");
+                console.error("Usuário anônimo não autenticado.");
                 dom.sessionIdDisplay.textContent = "Erro de Conexão";
             }
         });
 
+        // MUDANÇA CRÍTICA: O listener agora usa o ID da sessão
         function setupPatientListener() {
             if (state.unsubscribe) state.unsubscribe();
-            // A coleção agora é baseada no UID do usuário anônimo
-            const q = query(collection(db, `units/${state.user.uid}/patients`), orderBy("receptionTimestamp", "desc"));
+            if (!state.sessionId) return; // Garante que temos um ID de sessão
+
+            const collectionPath = `sessions/${state.sessionId}/patients`;
+            const q = query(collection(db, collectionPath), orderBy("receptionTimestamp", "desc"));
+            
             state.unsubscribe = onSnapshot(q, (querySnapshot) => {
                 state.patients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 render();
@@ -268,7 +292,7 @@
         }
 
         function render() {
-            if (!state.user) return;
+            if (!state.user || !state.sessionId) return;
             const viewContent = renderTemplates[state.currentView]();
             const viewElement = document.getElementById(`${state.currentView}-view`);
             if(viewElement) viewElement.innerHTML = viewContent;
@@ -292,14 +316,25 @@
         
         dom.navButtons.forEach(btn => btn.addEventListener('click', () => navigateTo(btn.dataset.view)));
 
+        dom.copySessionLinkBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                alert('Link da sessão copiado para a área de transferência!');
+            }, () => {
+                alert('Falha ao copiar o link.');
+            });
+        });
+
         document.body.addEventListener('submit', async e => {
             if (e.target.id === 'add-patient-form') {
                 e.preventDefault();
                 const name = e.target['patient-name'].value.trim();
                 const age = parseInt(e.target['patient-age'].value);
                 const isPriority = e.target['is-priority'].checked;
-                if (name && age && state.user) {
-                    await addDoc(collection(db, `units/${state.user.uid}/patients`), { name, age, isPriority, status: 'aguardando-triagem', receptionTimestamp: serverTimestamp() });
+                // MUDANÇA: Usa o caminho da coleção com o ID da sessão
+                if (name && age && state.sessionId) {
+                    await addDoc(collection(db, `sessions/${state.sessionId}/patients`), { 
+                        name, age, isPriority, status: 'aguardando-triagem', receptionTimestamp: serverTimestamp() 
+                    });
                     e.target.reset();
                 }
             }
@@ -308,9 +343,10 @@
         document.body.addEventListener('click', async e => {
             const action = e.target.dataset.action;
             const id = e.target.dataset.id;
-            if (!action || !id) return;
+            if (!action || !id || !state.sessionId) return;
 
-            const patientRef = doc(db, `units/${state.user.uid}/patients`, id);
+            // MUDANÇA: O caminho do documento agora usa o ID da sessão
+            const patientRef = doc(db, `sessions/${state.sessionId}/patients`, id);
 
             switch(action) {
                 case 'call-for-triage': await makeCall(id, 'triage'); break;
@@ -328,27 +364,34 @@
                     }
                     break;
                 }
-                case 'analyze-symptoms': /* (lógica permanece a mesma) */ break;
-                case 'generate-summary': /* (lógica permanece a mesma) */ break;
             }
         });
-
-        // --- Funções Auxiliares (sem alterações) ---
 
         function showModal(content) { dom.modal.classList.remove('hidden'); dom.modalContent.innerHTML = content; }
         function hideModal() { dom.modal.classList.add('hidden'); dom.modalContent.innerHTML = ''; }
         dom.modal.addEventListener('click', e => { if (e.target.id === 'modal' || e.target.matches('[data-action="close-modal"]')) hideModal(); });
 
         async function makeCall(patientId, callType) {
+            // MUDANÇA: Todos os caminhos usam o ID da sessão
+            const collectionPath = `sessions/${state.sessionId}/patients`;
             const currentlyCalled = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem');
+            
             if (currentlyCalled && currentlyCalled.id !== patientId) {
-                const oldPatientRef = doc(db, `units/${state.user.uid}/patients`, currentlyCalled.id);
+                const oldPatientRef = doc(db, collectionPath, currentlyCalled.id);
                 const newStatus = currentlyCalled.status === 'chamado-medico' ? 'em-atendimento' : 'em-triagem';
-                await updateDoc(oldPatientRef, { status: newStatus });
+                await updateDoc(oldPatientRef, { status: newStatus, attendedBy: currentlyCalled.attendedBy || state.user.uid });
             }
-            const newPatientRef = doc(db, `units/${state.user.uid}/patients`, patientId);
-            const updateData = { status: callType === 'doctor' ? 'chamado-medico' : 'chamado-triagem', callTimestamp: serverTimestamp() };
-            if (callType === 'doctor') updateData.attendedBy = state.user.uid;
+
+            const newPatientRef = doc(db, collectionPath, patientId);
+            const updateData = { 
+                status: callType === 'doctor' ? 'chamado-medico' : 'chamado-triagem', 
+                callTimestamp: serverTimestamp() 
+            };
+            if (callType === 'doctor') {
+                updateData.attendedBy = state.user.uid;
+            } else {
+                updateData.triagedBy = state.user.uid;
+            }
             await updateDoc(newPatientRef, updateData);
         }
 
@@ -359,14 +402,8 @@
                 <h3 class="text-lg leading-6 font-medium text-gray-900">${patient.isPriority ? '⭐' : ''} ${patient.name}</h3>
                 <div class="mt-2 px-2 py-3 space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 text-left">Sintomas</label>
-                        <textarea id="triage-symptoms" class="mt-1 block w-full rounded-md p-2" rows="3"></textarea>
-                        <button data-action="analyze-symptoms" data-id="${patientId}" class="mt-2 w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg text-sm">✨ Analisar Sintomas com IA</button>
-                        <div id="ai-analysis-result" class="mt-2"></div>
-                    </div>
-                    <div class="border-t pt-4">
                         <label class="block text-sm font-medium text-gray-700 text-left">Nível de Prioridade</label>
-                        <select id="priority-select" class="mt-1 block w-full rounded-md p-2">
+                        <select id="priority-select" class="mt-1 block w-full rounded-md p-2 border-gray-300">
                             <option value="1">1 - Emergência</option> <option value="2">2 - Muito Urgente</option>
                             <option value="3" selected>3 - Urgente</option> <option value="4">4 - Pouco Urgente</option>
                             <option value="5">5 - Não Urgente</option>
@@ -380,7 +417,6 @@
             showModal(content);
         }
 
-        // Funções para formatar data e obter classes de prioridade (sem alterações)
         function formatTimestamp(ts) {
             if (!ts) return '-';
             return new Date(ts.seconds * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -400,4 +436,3 @@
     </script>
 </body>
 </html>
-

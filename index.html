@@ -224,7 +224,8 @@
         
         // --- LÓGICA DE AUTENTICAÇÃO ---
         onAuthStateChanged(auth, async (user) => {
-            if (user) {
+            // CORREÇÃO: Apenas prosseguir se o usuário for válido e não anónimo
+            if (user && !user.isAnonymous) {
                 state.user = user;
                 // Buscar nome do estabelecimento
                 const userDoc = await getDoc(doc(db, "establishments", user.uid));
@@ -238,6 +239,10 @@
                 navigateTo('reception');
                 setupPatientListener(); 
             } else {
+                // Se houver um usuário anónimo de uma sessão antiga, faz logout
+                if (user && user.isAnonymous) {
+                    await signOut(auth);
+                }
                 state.user = null;
                 if(state.unsubscribe) state.unsubscribe();
                 state.patients = [];
@@ -280,11 +285,13 @@
         });
 
         dom.logoutBtn.addEventListener('click', () => signOut(auth));
-        dom.showRegisterBtn.addEventListener('click', () => {
+        dom.showRegisterBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             dom.loginView.classList.add('hidden');
             dom.registerView.classList.remove('hidden');
         });
-        dom.showLoginBtn.addEventListener('click', () => {
+        dom.showLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             dom.registerView.classList.add('hidden');
             dom.loginView.classList.remove('hidden');
         });
@@ -318,7 +325,24 @@
             const lastCalled = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem');
             if (lastCalled && state.lastCalledPatientId !== lastCalled.id) {
                 state.lastCalledPatientId = lastCalled.id;
-                // ... (código do som omitido para brevidade) ...
+                const bellSound = new Audio('https://actions.google.com/sounds/v1/events/bell_notification.ogg');
+                bellSound.play().catch(e => console.log("A reprodução do sino falhou:", e));
+
+                bellSound.addEventListener('ended', () => {
+                    const destination = lastCalled.status === 'chamado-medico' ? 'Atendimento Médico' : 'Triagem';
+                    const textToSpeak = `${lastCalled.name}, dirija-se à ${destination}.`;
+                    
+                    if ('speechSynthesis' in window) {
+                        try {
+                            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                            utterance.lang = 'pt-BR';
+                            utterance.rate = 0.9; 
+                            window.speechSynthesis.speak(utterance);
+                        } catch (error) {
+                            console.error("Erro ao tentar falar:", error);
+                        }
+                    }
+                });
             }
         }
         
@@ -384,10 +408,42 @@
 
         async function makeCall(patientId, callType) {
             const collectionPath = `establishments/${state.user.uid}/patients`;
-            // ... (lógica de chamada sem alterações) ...
+            const currentlyCalled = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem');
+            
+            if (currentlyCalled && currentlyCalled.id !== patientId) {
+                const oldPatientRef = doc(db, collectionPath, currentlyCalled.id);
+                const newStatus = currentlyCalled.status === 'chamado-medico' ? 'em-atendimento' : 'em-triagem';
+                await updateDoc(oldPatientRef, { status: newStatus });
+            }
+
+            const newPatientRef = doc(db, collectionPath, patientId);
+            const updateData = { 
+                status: callType === 'doctor' ? 'chamado-medico' : 'chamado-triagem', 
+                callTimestamp: serverTimestamp() 
+            };
+            if (callType === 'doctor') updateData.attendedBy = state.user.uid;
+            await updateDoc(newPatientRef, updateData);
         }
 
-        function showTriageModal(patientId) { /* (lógica sem alterações) */ }
+        function showTriageModal(patientId) { 
+            const patient = state.patients.find(p => p.id === patientId);
+            if (!patient) return;
+            const content = `
+                <h3 class="text-lg leading-6 font-medium text-gray-900">${patient.isPriority ? '⭐' : ''} ${patient.name}</h3>
+                <div class="mt-2 px-2 py-3">
+                    <label class="block text-sm font-medium text-gray-700 text-left">Nível de Prioridade</label>
+                    <select id="priority-select" class="mt-1 block w-full rounded-md p-2 border-gray-300">
+                        <option value="1">1 - Emergência</option> <option value="2">2 - Muito Urgente</option>
+                        <option value="3" selected>3 - Urgente</option> <option value="4">4 - Pouco Urgente</option>
+                        <option value="5">5 - Não Urgente</option>
+                    </select>
+                </div>
+                <div class="items-center px-4 py-3 bg-gray-50 -mx-5 -mb-5 mt-4 rounded-b-md">
+                    <button data-action="submit-triage" data-id="${patientId}" class="px-4 py-2 bg-green-500 text-white rounded-md w-full">Enviar para Fila Médica</button>
+                    <button data-action="close-modal" class="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md w-full">Cancelar</button>
+                </div>`;
+            showModal(content);
+         }
 
         function formatTimestamp(ts) {
             if (!ts) return '-';

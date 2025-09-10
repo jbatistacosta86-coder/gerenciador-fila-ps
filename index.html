@@ -48,59 +48,14 @@
 
     <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         
-        <!-- Tela de Login e Registro (visível antes de autenticar) -->
-        <div id="auth-container">
-            <main id="login-view" class="view active">
-                <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md mt-10">
-                    <h2 class="text-2xl font-bold text-center text-gray-700 mb-6">Acessar Unidade</h2>
-                    <form id="login-form">
-                        <div class="mb-4">
-                            <label for="login-unit-name" class="block text-sm font-medium text-gray-700">Nome da Unidade</label>
-                            <input type="text" id="login-unit-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: Hospital Central">
-                        </div>
-                        <div class="mb-6">
-                            <label for="login-password" class="block text-sm font-medium text-gray-700">Senha de Acesso</label>
-                            <input type="password" id="login-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                        </div>
-                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Entrar</button>
-                    </form>
-                    <p id="login-error" class="text-red-500 text-center text-sm mt-4"></p>
-                    <p class="text-center text-sm text-gray-600 mt-4">
-                        Não tem uma unidade? <a href="#" id="show-register" class="font-medium text-blue-600 hover:text-blue-500">Cadastre aqui</a>
-                    </p>
-                </div>
-            </main>
-
-            <main id="register-view" class="view">
-                 <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md mt-10">
-                    <h2 class="text-2xl font-bold text-center text-gray-700 mb-6">Cadastrar Nova Unidade</h2>
-                    <form id="register-form">
-                        <div class="mb-4">
-                            <label for="register-unit-name" class="block text-sm font-medium text-gray-700">Nome da Unidade</label>
-                            <input type="text" id="register-unit-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2" placeholder="Ex: Hospital Central">
-                        </div>
-                        <div class="mb-6">
-                            <label for="register-password" class="block text-sm font-medium text-gray-700">Crie uma Senha</label>
-                            <input type="password" id="register-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                        </div>
-                        <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Cadastrar</button>
-                    </form>
-                    <p id="register-error" class="text-red-500 text-center text-sm mt-4"></p>
-                     <p class="text-center text-sm text-gray-600 mt-4">
-                        Já tem cadastro? <a href="#" id="show-login" class="font-medium text-blue-600 hover:text-blue-500">Acesse aqui</a>
-                    </p>
-                </div>
-            </main>
-        </div>
-        
-        <!-- Container Principal da Aplicação (visível após autenticar) -->
-        <div id="main-app-container" class="hidden">
+        <!-- Container Principal da Aplicação (sempre visível) -->
+        <div id="main-app-container">
             <!-- Cabeçalho e Navegação -->
             <header class="bg-white shadow-md rounded-lg p-4 mb-6">
                 <div class="flex flex-col sm:flex-row justify-between items-center">
                     <div>
                       <h1 class="text-2xl sm:text-3xl font-bold text-blue-600">Pronto Socorro - Gestão de Fila</h1>
-                      <p class="text-sm text-gray-600">Unidade: <span id="unit-name-display" class="font-semibold"></span></p>
+                      <p class="text-sm text-gray-600">ID da Sessão: <span id="session-id-display" class="font-semibold text-gray-800">Carregando...</span></p>
                     </div>
                     <nav id="navigation" class="mt-4 sm:mt-0 flex flex-wrap gap-2 justify-center">
                         <button data-view="reception" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Recepção</button>
@@ -108,7 +63,6 @@
                         <button data-view="doctor" class="nav-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Médico</button>
                         <button data-view="panel" class="nav-btn bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Painel</button>
                         <button data-view="monitoring" class="nav-btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Acompanhamento</button>
-                        <button id="logout-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-sm">Sair</button>
                     </nav>
                 </div>
             </header>
@@ -135,15 +89,15 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp, query, orderBy, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- ATENÇÃO: COLE SUAS CONFIGURAÇÕES AQUI ---
         const firebaseConfig = {
 			apiKey: "AIzaSyCZOU5aaxwDpK-5NiDmYolOysbPNhs9to0",
 			authDomain: "fila-de-atendimento-6b32c.firebaseapp.com",
 			projectId: "fila-de-atendimento-6b32c",
-			storageBucket: "fila-de-atendimento-6b32c.firebasestorage.app",
+			storageBucket: "fila-de-atendimento-6b32c.appspot.com",
 			messagingSenderId: "60616234598",
 			appId: "1:60616234598:web:911eb2e837cfe24ae6ffa7",
 			measurementId: "G-87CDY00MBJ"
@@ -151,15 +105,20 @@
         const geminiApiKey = "AIzaSyDG53kdnsGV6B9MxMsFyNOf1GLtPaDAo4k"; 
         // ---------------------------------------------
         
-        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${AIzaSyDG53kdnsGV6B9MxMsFyNOf1GLtPaDAo4k}`;
+        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`;
         
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
+        // Inicia a autenticação anônima assim que a página carrega
+        signInAnonymously(auth).catch(error => {
+            console.error("Erro na autenticação anônima:", error);
+            // Poderia mostrar uma mensagem de erro para o usuário aqui
+        });
+
         const state = {
             user: null,
-            unitName: '',
             patients: [],
             currentView: 'reception',
             lastCalledPatientId: null,
@@ -167,18 +126,7 @@
         };
 
         const dom = {
-            authContainer: document.getElementById('auth-container'),
-            mainAppContainer: document.getElementById('main-app-container'),
-            loginView: document.getElementById('login-view'),
-            registerView: document.getElementById('register-view'),
-            loginForm: document.getElementById('login-form'),
-            registerForm: document.getElementById('register-form'),
-            showRegisterLink: document.getElementById('show-register'),
-            showLoginLink: document.getElementById('show-login'),
-            loginError: document.getElementById('login-error'),
-            registerError: document.getElementById('register-error'),
-            unitNameDisplay: document.getElementById('unit-name-display'),
-            logoutBtn: document.getElementById('logout-btn'),
+            sessionIdDisplay: document.getElementById('session-id-display'),
             views: document.querySelectorAll('#main-app-container .view'),
             navButtons: document.querySelectorAll('.nav-btn'),
             loading: document.getElementById('loading'),
@@ -296,35 +244,22 @@
             }
         };
 
-        function formatEmailFromName(name) {
-            const sanitized = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-            return `${sanitized}@er-queue.system`;
-        }
-        
-        onAuthStateChanged(auth, async (user) => {
+        onAuthStateChanged(auth, (user) => {
             if (user) {
                 state.user = user;
-                const unitDoc = await getDoc(doc(db, "units", user.uid));
-                if (unitDoc.exists()) {
-                    state.unitName = unitDoc.data().name;
-                    dom.unitNameDisplay.textContent = state.unitName;
-                }
-                dom.authContainer.classList.add('hidden');
-                dom.mainAppContainer.classList.remove('hidden');
+                // Exibe os primeiros 8 caracteres do ID anônimo para ser mais amigável
+                dom.sessionIdDisplay.textContent = user.uid.substring(0, 8);
                 navigateTo('reception');
                 setupPatientListener();
             } else {
-                state.user = null;
-                state.patients = [];
-                state.unitName = '';
-                dom.authContainer.classList.remove('hidden');
-                dom.mainAppContainer.classList.add('hidden');
-                showAuthView('login');
+                console.error("Usuário anônimo não autenticado. A aplicação pode não funcionar.");
+                dom.sessionIdDisplay.textContent = "Erro de Conexão";
             }
         });
 
         function setupPatientListener() {
             if (state.unsubscribe) state.unsubscribe();
+            // A coleção agora é baseada no UID do usuário anônimo
             const q = query(collection(db, `units/${state.user.uid}/patients`), orderBy("receptionTimestamp", "desc"));
             state.unsubscribe = onSnapshot(q, (querySnapshot) => {
                 state.patients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -338,12 +273,11 @@
             const viewElement = document.getElementById(`${state.currentView}-view`);
             if(viewElement) viewElement.innerHTML = viewContent;
 
-            // Audio notification
             const lastCalled = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem');
             if (lastCalled && state.lastCalledPatientId !== lastCalled.id) {
                 state.lastCalledPatientId = lastCalled.id;
                 const audio = new Audio('https://actions.google.com/sounds/v1/alarms/notification_high_intensity.ogg');
-                audio.play().catch(e => console.log("Audio play failed:", e));
+                audio.play().catch(e => console.log("A reprodução de áudio falhou:", e));
             }
         }
         
@@ -355,47 +289,7 @@
             dom.navButtons.forEach(btn => btn.classList.toggle('ring-2', btn.dataset.view === view));
             render();
         }
-
-        function showAuthView(view) {
-            dom.loginView.classList.toggle('active', view === 'login');
-            dom.registerView.classList.toggle('active', view === 'register');
-        }
-
-        dom.showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); showAuthView('register'); });
-        dom.showLoginLink.addEventListener('click', (e) => { e.preventDefault(); showAuthView('login'); });
-
-        dom.loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            dom.loginError.textContent = '';
-            const unitName = dom.loginForm['login-unit-name'].value;
-            const password = dom.loginForm['login-password'].value;
-            const email = formatEmailFromName(unitName);
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-            } catch (error) {
-                dom.loginError.textContent = 'Nome da unidade ou senha inválidos.';
-            }
-        });
-
-        dom.registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            dom.registerError.textContent = '';
-            const unitName = dom.registerForm['register-unit-name'].value;
-            const password = dom.registerForm['register-password'].value;
-            if(password.length < 6) {
-                dom.registerError.textContent = 'A senha deve ter pelo menos 6 caracteres.';
-                return;
-            }
-            const email = formatEmailFromName(unitName);
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                await setDoc(doc(db, "units", userCredential.user.uid), { name: unitName });
-            } catch (error) {
-                dom.registerError.textContent = 'Não foi possível cadastrar. A unidade já pode existir.';
-            }
-        });
         
-        dom.logoutBtn.addEventListener('click', () => signOut(auth));
         dom.navButtons.forEach(btn => btn.addEventListener('click', () => navigateTo(btn.dataset.view)));
 
         document.body.addEventListener('submit', async e => {
@@ -410,8 +304,7 @@
                 }
             }
         });
-
-        // Event delegation for all other actions
+        
         document.body.addEventListener('click', async e => {
             const action = e.target.dataset.action;
             const id = e.target.dataset.id;
@@ -435,10 +328,12 @@
                     }
                     break;
                 }
-                case 'analyze-symptoms': /* (rest of the logic remains the same) */ break;
-                case 'generate-summary': /* (rest of the logic remains the same) */ break;
+                case 'analyze-symptoms': /* (lógica permanece a mesma) */ break;
+                case 'generate-summary': /* (lógica permanece a mesma) */ break;
             }
         });
+
+        // --- Funções Auxiliares (sem alterações) ---
 
         function showModal(content) { dom.modal.classList.remove('hidden'); dom.modalContent.innerHTML = content; }
         function hideModal() { dom.modal.classList.add('hidden'); dom.modalContent.innerHTML = ''; }
@@ -483,6 +378,23 @@
                     <button data-action="close-modal" class="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md w-full">Cancelar</button>
                 </div>`;
             showModal(content);
+        }
+
+        // Funções para formatar data e obter classes de prioridade (sem alterações)
+        function formatTimestamp(ts) {
+            if (!ts) return '-';
+            return new Date(ts.seconds * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function getPriorityClass(p) {
+            switch(p) {
+                case 1: return { text: 'EMERGÊNCIA', bgc: 'bg-red-100', textc: 'text-red-800' };
+                case 2: return { text: 'MUITO URGENTE', bgc: 'bg-orange-100', textc: 'text-orange-800' };
+                case 3: return { text: 'URGENTE', bgc: 'bg-yellow-100', textc: 'text-yellow-800' };
+                case 4: return { text: 'POUCO URGENTE', bgc: 'bg-green-100', textc: 'text-green-800' };
+                case 5: return { text: 'NÃO URGENTE', bgc: 'bg-blue-100', textc: 'text-blue-800' };
+                default: return { text: 'N/A', bgc: 'bg-gray-100', textc: 'text-gray-800' };
+            }
         }
 
     </script>

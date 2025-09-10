@@ -300,7 +300,17 @@
             const lastCalled = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem');
             if (lastCalled && state.lastCalledPatientId !== lastCalled.id) {
                 state.lastCalledPatientId = lastCalled.id;
-                const audio = new Audio('https://actions.google.com/sounds/v1/alarms/notification_high_intensity.ogg');
+                
+                // Toca um som de sino 3 vezes para chamar a atenção no painel
+                let playCount = 0;
+                const audio = new Audio('https://actions.google.com/sounds/v1/events/bell_notification.ogg');
+                audio.addEventListener('ended', function() {
+                    playCount++;
+                    if (playCount < 3) {
+                        this.currentTime = 0;
+                        this.play().catch(e => console.log("A reprodução de áudio falhou:", e));
+                    }
+                });
                 audio.play().catch(e => console.log("A reprodução de áudio falhou:", e));
             }
         }
@@ -318,9 +328,9 @@
 
         dom.copySessionLinkBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(window.location.href).then(() => {
-                alert('Link da sessão copiado para a área de transferência!');
+                showModal(`<div class="p-4"><p class="text-green-600 font-semibold">Link da sessão copiado!</p><button data-action="close-modal" class="mt-4 w-full bg-gray-200 text-gray-700 py-2 rounded-lg">Fechar</button></div>`);
             }, () => {
-                alert('Falha ao copiar o link.');
+                showModal(`<div class="p-4"><p class="text-red-600 font-semibold">Falha ao copiar o link.</p><button data-action="close-modal" class="mt-4 w-full bg-gray-200 text-gray-700 py-2 rounded-lg">Fechar</button></div>`);
             });
         });
 
@@ -436,3 +446,4 @@
     </script>
 </body>
 </html>
+

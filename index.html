@@ -178,10 +178,28 @@
                 return `
                     <h2 class="text-2xl font-semibold mb-4 text-gray-700">Recepção - Admissão de Pacientes</h2>
                     <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-                        <form id="add-patient-form" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                            <div class="md:col-span-2"><label for="patient-name" class="block text-sm font-medium text-gray-700">Nome Completo</label><input type="text" id="patient-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
-                            <div><label for="patient-age" class="block text-sm font-medium text-gray-700">Idade</label><input type="number" id="patient-age" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
-                            <div class="md:col-span-3 flex items-center gap-4"><div class="flex items-center h-5"><input id="is-priority" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded"></div><div class="ml-3 text-sm"><label for="is-priority" class="font-medium text-gray-700">Atendimento Prioritário?</label></div></div>
+                        <form id="add-patient-form" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                             <div class="md:col-span-2">
+                                <label for="patient-name" class="block text-sm font-medium text-gray-700">Nome Completo</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <input type="text" id="patient-name" required class="block w-full rounded-md border-gray-300 shadow-sm p-2">
+                                    <button type="button" data-action="listen-name" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full" title="Falar nome do paciente">
+                                        <svg class="h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
+                                            <path fill-rule="evenodd" d="M5.5 8.5A.5.5 0 016 9v1a4 4 0 004 4h.01a4 4 0 004-4V9a.5.5 0 011 0v1a5 5 0 01-4.5 4.975V17h1.5a.5.5 0 010 1h-5a.5.5 0 010-1H10v-2.025A5 5 0 015.5 10V9a.5.5 0 01.5-.5z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="patient-birthdate" class="block text-sm font-medium text-gray-700">Data de Nascimento</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <input type="date" id="patient-birthdate" required class="block w-full rounded-md border-gray-300 shadow-sm p-2">
+                                    <button type="button" data-action="calculate-age" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Calcular</button>
+                                </div>
+                                <span id="calculated-age" class="text-sm font-medium text-gray-900 mt-1 inline-block"></span>
+                            </div>
+                            <div class="md:col-span-3 flex items-center gap-4 pt-4"><div class="flex items-center h-5"><input id="is-priority" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded"></div><div class="ml-3 text-sm"><label for="is-priority" class="font-medium text-gray-700">Atendimento Prioritário?</label></div></div>
                             <div class="md:col-span-3"><button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg">Adicionar Paciente</button></div>
                         </form>
                     </div>
@@ -192,10 +210,8 @@
                                 <td>${formatTimestamp(p.receptionTimestamp)}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td>
                                 <td><span class="px-2 py-1 text-xs rounded-full ${p.status === 'chamado-triagem' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'}">${p.status === 'chamado-triagem' ? 'CHAMADO' : 'AGUARDANDO'}</span></td>
                                 <td>
-                                    <button data-action="delete-patient" data-id="${p.id}" class="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100" title="Excluir Paciente">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
-                                        </svg>
+                                    <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
                                     </button>
                                 </td>
                             </tr>`).join('') : '<tr><td colspan="5" class="text-center py-4">Nenhum paciente.</td></tr>'}
@@ -205,33 +221,70 @@
                 const toTriage = state.patients.filter(p => p.status === 'aguardando-triagem' || p.status === 'chamado-triagem' || (p.status === 'em-triagem' && p.triagedBy === state.user.uid));
                 return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Triagem</h2>
                     <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-semibold mb-2 border-b pb-2">Pacientes para Triar (${toTriage.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Hora</th><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead>
-                        <tbody>${toTriage.length > 0 ? toTriage.map(p => `<tr class="bg-white border-b hover:bg-gray-50 ${p.status === 'em-triagem' ? 'bg-green-50' : ''}">
-                                <td>${formatTimestamp(p.receptionTimestamp)}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td>
-                                <td>${p.status === 'em-triagem' ? '<span class="text-green-700 font-semibold">Em atendimento...</span>' : `<div class="flex space-x-2">
-                                   <button data-action="call-for-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar</button>
-                                   <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button>
-                                   <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button>
-                                </div>`}</td></tr>`).join('') : '<tr><td colspan="4" class="text-center py-4">Nenhum paciente.</td></tr>'}
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead>
+                        <tbody>${toTriage.length > 0 ? toTriage.map(p => {
+                                let actionsHtml;
+                                if (p.status === 'em-triagem') {
+                                    actionsHtml = '<span class="text-green-700 font-semibold">Em atendimento...</span>';
+                                } else if (p.status === 'chamado-triagem') {
+                                    actionsHtml = `
+                                       <button data-action="recall-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar Novamente</button>
+                                       <button data-action="cancel-call-triage" data-id="${p.id}" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Cancelar</button>
+                                       <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button>
+                                       <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button>
+                                    `;
+                                } else { // aguardando-triagem
+                                    actionsHtml = `
+                                       <button data-action="call-for-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar</button>
+                                       <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button>
+                                       <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button>
+                                    `;
+                                }
+                                return `<tr class="bg-white border-b hover:bg-gray-50 ${p.status === 'em-triagem' ? 'bg-green-50' : ''}">
+                                <td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td>
+                                <td class="flex items-center gap-2">
+                                    <div class="flex space-x-2 w-full">${actionsHtml}</div>
+                                    <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                </td></tr>`
+                            }).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum paciente.</td></tr>'}
                         </tbody></table></div></div>`;
             },
             doctor: () => {
                 const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds;
                 const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter);
                 const attended = state.patients.filter(p => (p.status === 'em-atendimento' || p.status === 'chamado-medico') && p.attendedBy === state.user.uid);
-                let html = `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Atendimento Médico</h2><div class="bg-white p-6 rounded-lg shadow-md">
-                            <h3 class="text-xl font-semibold mb-2 border-b pb-2">Aguardando Atendimento (${waiting.length})</h3>`;
+                let html = `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Atendimento Médico</h2><div class="bg-white p-6 rounded-lg shadow-md">`;
                 if(attended.length > 0) {
                      html += attended.map(p => {
                         const prio = getPriorityClass(p.priority);
+                        let actionButtonsHtml;
+
+                        if (p.status === 'chamado-medico') {
+                            actionButtonsHtml = `
+                                <button data-action="recall-doctor" data-id="${p.id}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Chamar Novamente</button>
+                                <button data-action="cancel-call-doctor" data-id="${p.id}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Cancelar</button>
+                                <button data-action="start-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Atender</button>
+                                <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button>
+                            `;
+                        } else { // em-atendimento
+                            actionButtonsHtml = `
+                                <button data-action="finish-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Finalizar</button>
+                                <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button>
+                            `;
+                        }
+
                         return `<div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500 mb-6">
                                <div class="flex justify-between items-start">
-                                   <div><p class="font-bold text-lg">${p.isPriority ? '⭐' : ''} ${p.name} <span class="text-base font-normal text-gray-600">- ${p.age} anos</span></p>
+                                   <div><p class="font-bold text-lg">${p.isPriority ? '⭐' : ''} ${p.name} <span class="text-base font-normal text-gray-600">- ${p.age}</span></p>
                                    <span class="text-xs font-bold py-1 px-2 rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span>
                                    ${p.status === 'chamado-medico' ? `<p class="text-sm font-semibold text-red-700 mt-1">Chamado</p>` : ''}</div>
-                                   <div class="flex gap-2">
-                                        <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button>
-                                        <button data-action="finish-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Finalizar</button>
+                                   <div class="flex items-center gap-2">
+                                        ${actionButtonsHtml}
+                                        <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                                        </button>
                                    </div>
                                </div>
                                <div class="mt-4 border-t pt-4">
@@ -239,19 +292,40 @@
                                </div></div>`;
                     }).join('');
                 }
-                html += `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Prioridade</th><th>Chegada</th><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead><tbody>`;
+                html += `<h3 class="text-xl font-semibold mb-2 border-b pb-2">Aguardando Atendimento (${waiting.length})</h3>
+                         <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Prioridade</th><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead><tbody>`;
                 html += waiting.length > 0 ? waiting.map(p => {
                     const prio = getPriorityClass(p.priority);
                     return `<tr class="bg-white border-b hover:bg-gray-50">
                                 <td><span class="px-2 py-1 text-xs rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span></td>
-                                <td>${formatTimestamp(p.receptionTimestamp)}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td>
-                                <td><button data-action="call-patient" data-id="${p.id}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-xs">Chamar</button></td></tr>`;
-                }).join('') : '<tr><td colspan="5" class="text-center py-4">Nenhum paciente.</td></tr>';
+                                <td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td>
+                                <td class="flex items-center gap-2">
+                                    <button data-action="call-patient" data-id="${p.id}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-xs">Chamar</button>
+                                    <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                </td></tr>`;
+                }).join('') : '<tr><td colspan="4" class="text-center py-4">Nenhum paciente.</td></tr>';
                 html += `</tbody></table></div></div>`;
                 return html;
             },
             panel: () => { /* (sem alterações) */ },
-            monitoring: () => { /* (sem alterações) */ },
+            monitoring: () => {
+                const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds;
+                const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter);
+                const attended = state.patients.filter(p => p.status === 'atendido');
+                return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Acompanhamento</h2>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Fila de Atendimento Médico (${waiting.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Prioridade</th><th>Nome</th><th>Ações</th></tr></thead><tbody>
+                                ${waiting.length > 0 ? waiting.map(p => { const prio = getPriorityClass(p.priority); return `<tr class="bg-white border-b"><td class="font-medium ${prio.textc} ${prio.bgc}">${prio.text}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td></tr>`}).join('') : '<tr><td colspan="3" class="text-center py-4">Fila vazia.</td></tr>'}
+                                </tbody></table></div></div>
+                             <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Pacientes Atendidos (${attended.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead><tbody>
+                                ${attended.length > 0 ? attended.map(p => `<tr class="bg-white border-b"><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td><td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td></tr>`).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum atendido.</td></tr>'}
+                            </tbody></table></div></div>
+                        </div>`;
+            },
             history: () => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -271,27 +345,24 @@
                                 <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                                     <tr>
                                         <th>Paciente</th>
-                                        <th>Chegada</th>
-                                        <th>Encaminhamento</th>
-                                        <th>Finalização</th>
-                                        <th>Classificação</th>
                                         <th>Status Final</th>
+                                        <th>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     ${attendedToday.length > 0 ? attendedToday.map(p => {
-                                        const prio = getPriorityClass(p.priority);
                                         return `
                                             <tr class="bg-white border-b hover:bg-gray-50">
                                                 <td>${p.isPriority ? '⭐' : ''} ${p.name}</td>
-                                                <td>${formatFullTimestamp(p.receptionTimestamp)}</td>
-                                                <td>${formatFullTimestamp(p.triageTimestamp)}</td>
-                                                <td>${formatFullTimestamp(p.finishTimestamp)}</td>
-                                                <td><span class="px-2 py-1 text-xs rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span></td>
                                                 <td>${getFinalStatusText(p.status)}</td>
+                                                <td>
+                                                    <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                                                    </button>
+                                                </td>
                                             </tr>
                                         `
-                                    }).join('') : '<tr><td colspan="6" class="text-center py-4">Nenhum paciente finalizado hoje.</td></tr>'}
+                                    }).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum paciente finalizado hoje.</td></tr>'}
                                 </tbody>
                             </table>
                         </div>
@@ -460,14 +531,21 @@
             if (e.target.id === 'add-patient-form') {
                 e.preventDefault();
                 const name = e.target['patient-name'].value.trim();
-                const age = parseInt(e.target['patient-age'].value);
+                const birthdate = e.target['patient-birthdate'].value;
                 const isPriority = e.target['is-priority'].checked;
+                const age = calculateAge(birthdate);
 
-                if (name && age && state.user) {
+                if (name && birthdate && age && state.user) {
                     await addDoc(collection(db, `establishments/${state.user.uid}/patients`), { 
-                        name, age, isPriority, status: 'aguardando-triagem', receptionTimestamp: serverTimestamp() 
+                        name, 
+                        birthdate,
+                        age,
+                        isPriority, 
+                        status: 'aguardando-triagem', 
+                        receptionTimestamp: serverTimestamp() 
                     });
                     e.target.reset();
+                    document.getElementById('calculated-age').textContent = '';
                 }
             }
         });
@@ -477,6 +555,23 @@
             if (!button) return;
 
             const action = button.dataset.action;
+
+            if (action === 'calculate-age') {
+                const birthdate = document.getElementById('patient-birthdate').value;
+                const ageDisplay = document.getElementById('calculated-age');
+                if (birthdate) {
+                    ageDisplay.textContent = calculateAge(birthdate);
+                } else {
+                    ageDisplay.textContent = 'Selecione uma data.';
+                }
+                return;
+            }
+
+            if (action === 'listen-name') {
+                startSpeechRecognition();
+                return;
+            }
+
             const id = button.dataset.id;
             if (!action || !id || !state.user) return;
 
@@ -510,6 +605,21 @@
                         }
                     );
                     break;
+                case 'recall-triage':
+                    await makeCall(id, 'triage');
+                    break;
+                case 'cancel-call-triage':
+                    await updateDoc(patientRef, { status: 'aguardando-triagem' });
+                    break;
+                case 'recall-doctor':
+                    await makeCall(id, 'doctor');
+                    break;
+                case 'cancel-call-doctor':
+                    await updateDoc(patientRef, { status: 'aguardando-atendimento' });
+                    break;
+                case 'start-consultation':
+                    await updateDoc(patientRef, { status: 'em-atendimento' });
+                    break;
                 case 'call-for-triage': await makeCall(id, 'triage'); break;
                 case 'start-triage':
                     await updateDoc(patientRef, { status: 'em-triagem', triagedBy: state.user.uid });
@@ -531,6 +641,76 @@
         });
 
         // --- Funções Auxiliares ---
+        function calculateAge(birthDateString) {
+            if (!birthDateString) return '';
+            const birthDate = new Date(birthDateString);
+            birthDate.setUTCHours(12);
+
+            const today = new Date();
+            let years = today.getFullYear() - birthDate.getFullYear();
+            let months = today.getMonth() - birthDate.getMonth();
+            let days = today.getDate() - birthDate.getDate();
+
+            if (months < 0 || (months === 0 && days < 0)) {
+                years--;
+                months = (months + 12) % 12;
+            }
+
+            if (days < 0) {
+                const previousMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+                days += previousMonth.getDate();
+                months--;
+                 if (months < 0) {
+                    months = 11;
+                    years--;
+                }
+            }
+
+            if (years > 0) return `${years} ${years > 1 ? 'anos' : 'ano'}`;
+            if (months > 0) return `${months} ${months > 1 ? 'meses' : 'mês'}`;
+            return `${days} ${days > 1 ? 'dias' : 'dia'}`;
+        }
+
+        function startSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                showModal('<p>O seu navegador não suporta reconhecimento de voz.</p><button data-action="close-modal" class="mt-4 px-4 py-2 bg-gray-200 rounded-md">Fechar</button>');
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'pt-BR';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            const nameInput = document.getElementById('patient-name');
+            const micButton = document.querySelector('[data-action="listen-name"]');
+            const originalMicSVG = micButton.innerHTML;
+            micButton.innerHTML = `<svg class="h-5 w-5 text-red-500 animate-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path fill-rule="evenodd" d="M5.5 8.5A.5.5 0 016 9v1a4 4 0 004 4h.01a4 4 0 004-4V9a.5.5 0 011 0v1a5 5 0 01-4.5 4.975V17h1.5a.5.5 0 010 1h-5a.5.5 0 010-1H10v-2.025A5 5 0 015.5 10V9a.5.5 0 01.5-.5z" clip-rule="evenodd" /></svg>`;
+
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                nameInput.value = speechResult.charAt(0).toUpperCase() + speechResult.slice(1);
+            };
+
+            recognition.onspeechend = () => {
+                recognition.stop();
+            };
+
+
+
+            recognition.onend = () => {
+                 micButton.innerHTML = originalMicSVG;
+            }
+
+            recognition.onerror = (event) => {
+                console.error('Erro no reconhecimento de voz:', event.error);
+                micButton.innerHTML = originalMicSVG;
+            };
+        }
+
         function showModal(content) { dom.modal.classList.remove('hidden'); dom.modalContent.innerHTML = content; }
         function hideModal() { dom.modal.classList.add('hidden'); dom.modalContent.innerHTML = ''; }
         dom.modal.addEventListener('click', e => { if (e.target.id === 'modal' || e.target.matches('[data-action="close-modal"]')) hideModal(); });
@@ -555,7 +735,7 @@
             
             if (currentlyCalled && currentlyCalled.id !== patientId) {
                 const oldPatientRef = doc(db, collectionPath, currentlyCalled.id);
-                const newStatus = currentlyCalled.status === 'chamado-medico' ? 'em-atendimento' : 'em-triagem';
+                const newStatus = currentlyCalled.status === 'chamado-medico' ? 'aguardando-atendimento' : 'aguardando-triagem';
                 await updateDoc(oldPatientRef, { status: newStatus });
             }
 
@@ -636,28 +816,7 @@
                         <div id="panel-current-call" class="text-center py-8 min-h-[150px] flex items-center justify-center">${content}</div>
                     </div>`;
         };
-        renderTemplates.monitoring = () => {
-            const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds;
-            const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter);
-            const history = state.patients.filter(p => p.callTimestamp).sort((a, b) => b.callTimestamp.seconds - a.callTimestamp.seconds).slice(0, 10);
-            const attended = state.patients.filter(p => p.status === 'atendido');
-            return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Acompanhamento</h2>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Fila de Atendimento Médico (${waiting.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm">
-                            <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Prioridade</th><th>Nome</th></tr></thead><tbody>
-                            ${waiting.length > 0 ? waiting.map(p => { const prio = getPriorityClass(p.priority); return `<tr class="bg-white border-b"><td class="font-medium ${prio.textc} ${prio.bgc}">${prio.text}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td></tr>`}).join('') : '<tr><td colspan="2" class="text-center py-4">Fila vazia.</td></tr>'}
-                            </tbody></table></div></div>
-                        <div class="space-y-6">
-                            <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Histórico de Chamados</h3><div class="overflow-x-auto"><table class="w-full text-sm">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Hora</th><th>Nome</th></tr></thead><tbody>
-                                ${history.length > 0 ? history.map(p => `<tr class="bg-white border-b"><td>${formatTimestamp(p.callTimestamp)}</td><td>${p.name}</td></tr>`).join('') : '<tr><td colspan="2" class="text-center py-4">Nenhum chamado.</td></tr>'}
-                            </tbody></table></div></div>
-                            <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Pacientes Atendidos (${attended.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Admissão</th><th>Nome</th><th>Idade</th></tr></thead><tbody>
-                                ${attended.length > 0 ? attended.map(p => `<tr class="bg-white border-b"><td>${formatTimestamp(p.receptionTimestamp)}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td></tr>`).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum atendido.</td></tr>'}
-                            </tbody></table></div></div>
-                        </div></div>`;
-        };
+       
 
 
     </script>

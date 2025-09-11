@@ -5,38 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Fila - Pronto Socorro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .view {
-            display: none;
-        }
-        .view.active {
-            display: block;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .view { display: none; }
+        .view.active { display: block; }
         @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(49, 130, 206, 0.7);
-            }
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 0 20px 10px rgba(49, 130, 206, 0);
-            }
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(49, 130, 206, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px 10px rgba(49, 130, 206, 0); }
         }
-        .patient-called {
-            animation: pulse 2s infinite;
-        }
-        th, td {
-            padding: 12px 16px;
-        }
+        .patient-called { animation: pulse 2s infinite; }
+        th, td { padding: 12px 16px; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
     <div id="app" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- Tela para o paciente inserir o nome via QR code -->
+        <div id="qr-scan-container" class="hidden">
+            <div class="bg-white p-8 rounded-lg shadow-md max-w-md mx-auto">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Identificação do Paciente</h2>
+                <p class="text-center mb-4">Por favor, insira o seu nome completo abaixo e clique em enviar.</p>
+                <form id="qr-form">
+                    <div class="mb-4">
+                        <label for="qr-patient-name" class="block text-sm font-medium text-gray-700">Nome Completo</label>
+                        <input type="text" id="qr-patient-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 text-lg">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Enviar Nome</button>
+                </form>
+            </div>
+        </div>
         
         <!-- Container de Autenticação -->
         <div id="auth-container">
@@ -55,9 +55,7 @@
                         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Entrar</button>
                     </form>
                     <p id="login-error" class="text-red-500 text-sm mt-4 text-center"></p>
-                    <p class="text-sm text-center mt-4">
-                        Não tem uma conta? <a href="#" id="show-register" class="font-medium text-blue-600 hover:text-blue-500">Registe-se</a>
-                    </p>
+                    <p class="text-sm text-center mt-4">Não tem uma conta? <a href="#" id="show-register" class="font-medium text-blue-600 hover:text-blue-500">Registe-se</a></p>
                 </div>
             </div>
 
@@ -80,9 +78,7 @@
                         <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg">Registar</button>
                     </form>
                     <p id="register-error" class="text-red-500 text-sm mt-4 text-center"></p>
-                    <p class="text-sm text-center mt-4">
-                        Já tem uma conta? <a href="#" id="show-login" class="font-medium text-blue-600 hover:text-blue-500">Faça Login</a>
-                    </p>
+                    <p class="text-sm text-center mt-4">Já tem uma conta? <a href="#" id="show-login" class="font-medium text-blue-600 hover:text-blue-500">Faça Login</a></p>
                 </div>
             </div>
         </div>
@@ -106,17 +102,12 @@
                      <button id="logout-btn" class="mt-4 sm:mt-0 text-sm bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-2 px-3 rounded-lg">Sair</button>
                 </div>
             </header>
-
             <main id="reception-view" class="view"></main>
             <main id="triage-view" class="view"></main>
             <main id="doctor-view" class="view"></main>
             <main id="panel-view" class="view"></main>
             <main id="monitoring-view" class="view"></main>
             <main id="history-view" class="view"></main>
-        </div>
-
-        <div id="loading" class="text-center p-10 hidden">
-            <p class="text-lg font-semibold text-gray-600">Carregando...</p>
         </div>
         
         <div id="modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
@@ -130,7 +121,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, setDoc, getDoc, serverTimestamp, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+
         const firebaseConfig = {
 			apiKey: "AIzaSyCZOU5aaxwDpK-5NiDmYolOysbPNhs9to0",
 			authDomain: "fila-de-atendimento-6b32c.firebaseapp.com",
@@ -140,14 +132,14 @@
 			appId: "1:60616234598:web:911eb2e837cfe24ae6ffa7",
 			measurementId: "G-87CDY00MBJ"
 		};
-
-        // IMPORTANTE: Insira a sua chave da API do Google AI Studio aqui
-        const geminiApiKey = "AIzaSyDG53kdnsGV6B9MxMsFyNOf1GLtPaDAo4k";
-        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${geminiApiKey}`;
         
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
+        const functions = getFunctions(app);
+
+        let audioContext = null;
+        let qrListenerUnsubscribe = null;
 
         const state = {
             user: null,
@@ -158,6 +150,8 @@
         };
 
         const dom = {
+            app: document.getElementById('app'),
+            qrScanContainer: document.getElementById('qr-scan-container'),
             authContainer: document.getElementById('auth-container'),
             mainAppContainer: document.getElementById('main-app-container'),
             loginView: document.getElementById('login-view'),
@@ -187,11 +181,11 @@
                                 <label for="patient-name" class="block text-sm font-medium text-gray-700">Nome Completo</label>
                                 <div class="flex items-center gap-2 mt-1">
                                     <input type="text" id="patient-name" required class="block w-full rounded-md border-gray-300 shadow-sm p-2">
+                                    <button type="button" data-action="show-qr" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full" title="Gerar QR Code para paciente inserir nome">
+                                        <svg class="h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V4h2v2H5zM3 10a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm2 2v-2h2v2H5zM10 4a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 01-1 1h-2a1 1 0 01-1-1V4zm2 2V4h2v2h-2zM8 9a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1v-6a1 1 0 00-1-1H8z" clip-rule="evenodd" /></svg>
+                                    </button>
                                     <button type="button" data-action="listen-name" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full" title="Falar nome do paciente">
-                                        <svg class="h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                            <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
-                                            <path fill-rule="evenodd" d="M5.5 8.5A.5.5 0 016 9v1a4 4 0 004 4h.01a4 4 0 004-4V9a.5.5 0 011 0v1a5 5 0 01-4.5 4.975V17h1.5a.5.5 0 010 1h-5a.5.5 0 010-1H10v-2.025A5 5 0 015.5 10V9a.5.5 0 01.5-.5z" clip-rule="evenodd" />
-                                        </svg>
+                                        <svg class="h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path fill-rule="evenodd" d="M5.5 8.5A.5.5 0 016 9v1a4 4 0 004 4h.01a4 4 0 004-4V9a.5.5 0 011 0v1a5 5 0 01-4.5 4.975V17h1.5a.5.5 0 010 1h-5a.5.5 0 010-1H10v-2.025A5 5 0 015.5 10V9a.5.5 0 01.5-.5z" clip-rule="evenodd" /></svg>
                                     </button>
                                 </div>
                             </div>
@@ -213,198 +207,89 @@
                             <tr class="bg-white border-b hover:bg-gray-50">
                                 <td>${formatTimestamp(p.receptionTimestamp)}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td>
                                 <td><span class="px-2 py-1 text-xs rounded-full ${p.status === 'chamado-triagem' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'}">${p.status === 'chamado-triagem' ? 'CHAMADO' : 'AGUARDANDO'}</span></td>
-                                <td>
-                                    <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
-                                    </button>
-                                </td>
+                                <td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td>
                             </tr>`).join('') : '<tr><td colspan="5" class="text-center py-4">Nenhum paciente.</td></tr>'}
                         </tbody></table></div></div>`;
             },
-            triage: () => {
-                const toTriage = state.patients.filter(p => p.status === 'aguardando-triagem' || p.status === 'chamado-triagem' || (p.status === 'em-triagem' && p.triagedBy === state.user.uid));
-                return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Triagem</h2>
-                    <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-semibold mb-2 border-b pb-2">Pacientes para Triar (${toTriage.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead>
-                        <tbody>${toTriage.length > 0 ? toTriage.map(p => {
-                                let actionsHtml;
-                                if (p.status === 'em-triagem') {
-                                    actionsHtml = '<span class="text-green-700 font-semibold">Em atendimento...</span>';
-                                } else if (p.status === 'chamado-triagem') {
-                                    actionsHtml = `
-                                       <button data-action="recall-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar Novamente</button>
-                                       <button data-action="cancel-call-triage" data-id="${p.id}" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Cancelar</button>
-                                       <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button>
-                                       <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button>
-                                    `;
-                                } else { // aguardando-triagem
-                                    actionsHtml = `
-                                       <button data-action="call-for-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar</button>
-                                       <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button>
-                                       <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button>
-                                    `;
-                                }
-                                return `<tr class="bg-white border-b hover:bg-gray-50 ${p.status === 'em-triagem' ? 'bg-green-50' : ''}">
-                                <td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td>
-                                <td class="flex items-center gap-2">
-                                    <div class="flex space-x-2 w-full">${actionsHtml}</div>
-                                    <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
-                                    </button>
-                                </td></tr>`
-                            }).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum paciente.</td></tr>'}
-                        </tbody></table></div></div>`;
+            triage: () => { 
+                const toTriage = state.patients.filter(p => p.status === 'aguardando-triagem' || p.status === 'chamado-triagem' || (p.status === 'em-triagem' && p.triagedBy === state.user.uid)); return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Triagem</h2> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-semibold mb-2 border-b pb-2">Pacientes para Triar (${toTriage.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead> <tbody>${toTriage.length > 0 ? toTriage.map(p => { let actionsHtml; if (p.status === 'em-triagem') { actionsHtml = '<span class="text-green-700 font-semibold">Em atendimento...</span>'; } else if (p.status === 'chamado-triagem') { actionsHtml = ` <button data-action="recall-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar Novamente</button> <button data-action="cancel-call-triage" data-id="${p.id}" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Cancelar</button> <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button> <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button> `; } else { actionsHtml = ` <button data-action="call-for-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar</button> <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button> <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button> `; } return `<tr class="bg-white border-b hover:bg-gray-50 ${p.status === 'em-triagem' ? 'bg-green-50' : ''}"> <td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td> <td class="flex items-center gap-2"> <div class="flex space-x-2 w-full">${actionsHtml}</div> <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </td></tr>` }).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum paciente.</td></tr>'} </tbody></table></div></div>`;
             },
-            doctor: () => {
-                const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds;
-                const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter);
-                const attended = state.patients.filter(p => (p.status === 'em-atendimento' || p.status === 'chamado-medico') && p.attendedBy === state.user.uid);
-                let html = `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Atendimento Médico</h2><div class="bg-white p-6 rounded-lg shadow-md">`;
-                if(attended.length > 0) {
-                     html += attended.map(p => {
-                        const prio = getPriorityClass(p.priority);
-                        let actionButtonsHtml;
-
-                        if (p.status === 'chamado-medico') {
-                            actionButtonsHtml = `
-                                <button data-action="recall-doctor" data-id="${p.id}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Chamar Novamente</button>
-                                <button data-action="cancel-call-doctor" data-id="${p.id}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Cancelar</button>
-                                <button data-action="start-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Atender</button>
-                                <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button>
-                            `;
-                        } else { // em-atendimento
-                            actionButtonsHtml = `
-                                <button data-action="finish-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Finalizar</button>
-                                <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button>
-                            `;
-                        }
-
-                        return `<div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500 mb-6">
-                               <div class="flex justify-between items-start">
-                                   <div><p class="font-bold text-lg">${p.isPriority ? '⭐' : ''} ${p.name} <span class="text-base font-normal text-gray-600">- ${p.age}</span></p>
-                                   <span class="text-xs font-bold py-1 px-2 rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span>
-                                   ${p.status === 'chamado-medico' ? `<p class="text-sm font-semibold text-red-700 mt-1">Chamado</p>` : ''}</div>
-                                   <div class="flex items-center gap-2">
-                                        ${actionButtonsHtml}
-                                        <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
-                                        </button>
-                                   </div>
-                               </div>
-                               <div class="mt-4 border-t pt-4">
-                                   <textarea data-action="save-notes" data-id="${p.id}" class="mt-1 block w-full rounded-md p-2 border-gray-300" rows="4" placeholder="Anotações...">${p.doctorNotes || ''}</textarea>
-                               </div></div>`;
-                    }).join('');
-                }
-                html += `<h3 class="text-xl font-semibold mb-2 border-b pb-2">Aguardando Atendimento (${waiting.length})</h3>
-                         <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Prioridade</th><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead><tbody>`;
-                html += waiting.length > 0 ? waiting.map(p => {
-                    const prio = getPriorityClass(p.priority);
-                    return `<tr class="bg-white border-b hover:bg-gray-50">
-                                <td><span class="px-2 py-1 text-xs rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span></td>
-                                <td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td>
-                                <td class="flex items-center gap-2">
-                                    <button data-action="call-patient" data-id="${p.id}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-xs">Chamar</button>
-                                    <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
-                                    </button>
-                                </td></tr>`;
-                }).join('') : '<tr><td colspan="4" class="text-center py-4">Nenhum paciente.</td></tr>';
-                html += `</tbody></table></div></div>`;
-                return html;
+            doctor: () => { 
+                const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds; const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter); const attended = state.patients.filter(p => (p.status === 'em-atendimento' || p.status === 'chamado-medico') && p.attendedBy === state.user.uid); let html = `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Atendimento Médico</h2><div class="bg-white p-6 rounded-lg shadow-md">`; if(attended.length > 0) { html += attended.map(p => { const prio = getPriorityClass(p.priority); let actionButtonsHtml; if (p.status === 'chamado-medico') { actionButtonsHtml = ` <button data-action="recall-doctor" data-id="${p.id}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Chamar Novamente</button> <button data-action="cancel-call-doctor" data-id="${p.id}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Cancelar</button> <button data-action="start-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Atender</button> <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button> `; } else { actionButtonsHtml = ` <button data-action="finish-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Finalizar</button> <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button> `; } return `<div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500 mb-6"> <div class="flex justify-between items-start"> <div><p class="font-bold text-lg">${p.isPriority ? '⭐' : ''} ${p.name} <span class="text-base font-normal text-gray-600">- ${p.age}</span></p> <span class="text-xs font-bold py-1 px-2 rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span> ${p.status === 'chamado-medico' ? `<p class="text-sm font-semibold text-red-700 mt-1">Chamado</p>` : ''}</div> <div class="flex items-center gap-2"> ${actionButtonsHtml} <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </div> </div> <div class="mt-4 border-t pt-4"> <textarea data-action="save-notes" data-id="${p.id}" class="mt-1 block w-full rounded-md p-2 border-gray-300" rows="4" placeholder="Anotações...">${p.doctorNotes || ''}</textarea> </div></div>`; }).join(''); } html += `<h3 class="text-xl font-semibold mb-2 border-b pb-2">Aguardando Atendimento (${waiting.length})</h3> <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Prioridade</th><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead><tbody>`; html += waiting.length > 0 ? waiting.map(p => { const prio = getPriorityClass(p.priority); return `<tr class="bg-white border-b hover:bg-gray-50"> <td><span class="px-2 py-1 text-xs rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span></td> <td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td> <td class="flex items-center gap-2"> <button data-action="call-patient" data-id="${p.id}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-xs">Chamar</button> <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </td></tr>`; }).join('') : '<tr><td colspan="4" class="text-center py-4">Nenhum paciente.</td></tr>'; html += `</tbody></table></div></div>`; return html; 
             },
-            panel: () => { /* (sem alterações) */ },
-            monitoring: () => {
-                const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds;
-                const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter);
-                const attended = state.patients.filter(p => p.status === 'atendido');
-                return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Acompanhamento</h2>
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Fila de Atendimento Médico (${waiting.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Prioridade</th><th>Nome</th><th>Ações</th></tr></thead><tbody>
-                                ${waiting.length > 0 ? waiting.map(p => { const prio = getPriorityClass(p.priority); return `<tr class="bg-white border-b"><td class="font-medium ${prio.textc} ${prio.bgc}">${prio.text}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td></tr>`}).join('') : '<tr><td colspan="3" class="text-center py-4">Fila vazia.</td></tr>'}
-                                </tbody></table></div></div>
-                             <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Pacientes Atendidos (${attended.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead><tbody>
-                                ${attended.length > 0 ? attended.map(p => `<tr class="bg-white border-b"><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td><td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td></tr>`).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum atendido.</td></tr>'}
-                            </tbody></table></div></div>
-                        </div>`;
+            panel: () => { 
+                const called = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem'); let content = '<p class="text-2xl text-gray-500">Aguardando chamada...</p>'; if (called) { const type = called.status === 'chamado-medico' ? 'Atendimento Médico' : 'Triagem'; content = `<div class="p-6 rounded-lg bg-blue-50 border border-blue-200 patient-called"> <p class="text-4xl sm:text-5xl font-extrabold text-blue-700 break-words">${called.name}</p> <p class="text-2xl sm:text-3xl font-semibold text-gray-700 mt-2">Dirija-se à ${type}</p></div>`; } return `<h2 class="text-3xl font-bold mb-6 text-center text-gray-800">Painel de Chamados</h2> <div class="bg-white p-6 rounded-lg shadow-xl"> <h3 class="text-xl font-semibold mb-4 text-center border-b pb-2">PACIENTE CHAMADO</h3> <div id="panel-current-call" class="text-center py-8 min-h-[150px] flex items-center justify-center">${content}</div> </div>`; 
             },
-            history: () => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                const attendedToday = state.patients.filter(p => {
-                    const finalStatus = ['atendido', 'nao-compareceu-triagem', 'nao-compareceu-medico'];
-                    return finalStatus.includes(p.status) &&
-                           p.receptionTimestamp && 
-                           p.receptionTimestamp.toDate() >= today;
-                });
-
-                return `
-                    <h2 class="text-2xl font-semibold mb-4 text-gray-700">Histórico de Atendimentos de Hoje</h2>
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                                    <tr>
-                                        <th>Paciente</th>
-                                        <th>Status Final</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${attendedToday.length > 0 ? attendedToday.map(p => {
-                                        return `
-                                            <tr class="bg-white border-b hover:bg-gray-50">
-                                                <td>${p.isPriority ? '⭐' : ''} ${p.name}</td>
-                                                <td>${getFinalStatusText(p.status)}</td>
-                                                <td>
-                                                    <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        `
-                                    }).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum paciente finalizado hoje.</td></tr>'}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>`;
-            }
+            monitoring: () => { 
+                const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds; const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter); const attended = state.patients.filter(p => p.status === 'atendido'); return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Acompanhamento</h2> <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Fila de Atendimento Médico (${waiting.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Prioridade</th><th>Nome</th><th>Ações</th></tr></thead><tbody> ${waiting.length > 0 ? waiting.map(p => { const prio = getPriorityClass(p.priority); return `<tr class="bg-white border-b"><td class="font-medium ${prio.textc} ${prio.bgc}">${prio.text}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td></tr>`}).join('') : '<tr><td colspan="3" class="text-center py-4">Fila vazia.</td></tr>'} </tbody></table></div></div> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Pacientes Atendidos (${attended.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead><tbody> ${attended.length > 0 ? attended.map(p => `<tr class="bg-white border-b"><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td><td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td></tr>`).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum atendido.</td></tr>'} </tbody></table></div></div> </div>`; 
+            },
+            history: () => { 
+                const today = new Date(); today.setHours(0, 0, 0, 0); const attendedToday = state.patients.filter(p => { const finalStatus = ['atendido', 'nao-compareceu-triagem', 'nao-compareceu-medico']; return finalStatus.includes(p.status) && p.receptionTimestamp && p.receptionTimestamp.toDate() >= today; }); return ` <h2 class="text-2xl font-semibold mb-4 text-gray-700">Histórico de Atendimentos de Hoje</h2> <div class="bg-white p-6 rounded-lg shadow-md"> <div class="overflow-x-auto"> <table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"> <tr> <th>Paciente</th> <th>Status Final</th> <th>Ações</th> </tr> </thead> <tbody> ${attendedToday.length > 0 ? attendedToday.map(p => { return ` <tr class="bg-white border-b hover:bg-gray-50"> <td>${p.isPriority ? '⭐' : ''} ${p.name}</td> <td>${getFinalStatusText(p.status)}</td> <td> <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </td> </tr> ` }).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum paciente finalizado hoje.</td></tr>'} </tbody> </table> </div> </div>`; 
+            },
         };
         
-        // --- LÓGICA DE AUTENTICAÇÃO ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                if (user.isAnonymous) {
-                    await signOut(auth);
-                    return;
-                }
-                state.user = user;
-                const userDoc = await getDoc(doc(db, "establishments", user.uid));
-                if (userDoc.exists()) {
-                    dom.establishmentNameDisplay.textContent = userDoc.data().name;
-                }
-                dom.authContainer.classList.add('hidden');
-                dom.mainAppContainer.classList.remove('hidden');
-                navigateTo('reception');
-                setupPatientListener(); 
-            } else {
-                state.user = null;
-                if(state.unsubscribe) state.unsubscribe();
-                state.patients = [];
-                dom.loginForm.reset();
-                dom.registerForm.reset();
-                dom.loginError.textContent = '';
-                dom.registerError.textContent = '';
-                dom.authContainer.classList.remove('hidden');
-                dom.mainAppContainer.classList.add('hidden');
-            }
-        });
+        // --- INICIALIZAÇÃO E ROTEAMENTO ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const qrSessionId = urlParams.get('qrSessionId');
+        const establishmentId = urlParams.get('establishmentId');
 
+        if (qrSessionId && establishmentId) {
+            // Modo QR Code (dispositivo do paciente)
+            dom.authContainer.classList.add('hidden');
+            dom.mainAppContainer.classList.add('hidden');
+            dom.qrScanContainer.classList.remove('hidden');
+
+            const qrForm = document.getElementById('qr-form');
+            qrForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const submitBtn = qrForm.querySelector('button');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'A enviar...';
+                const patientName = document.getElementById('qr-patient-name').value;
+                if(patientName) {
+                    const sessionRef = doc(db, `establishments/${establishmentId}/qrSessions/${qrSessionId}`);
+                    try {
+                        await updateDoc(sessionRef, { name: patientName, status: 'completed' });
+                        dom.qrScanContainer.innerHTML = `<div class="bg-white p-8 rounded-lg shadow-md max-w-md mx-auto text-center"><h2 class="text-2xl font-bold text-green-600">Obrigado!</h2><p class="mt-2">O seu nome foi enviado para a receção.</p></div>`;
+                    } catch(error) {
+                        console.error("Erro ao enviar nome:", error);
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Enviar Nome';
+                    }
+                }
+            });
+        } else {
+            // Fluxo normal da aplicação (receção, médico, etc.)
+            onAuthStateChanged(auth, async (user) => {
+                if (user && !user.isAnonymous) {
+                    state.user = user;
+                    const userDoc = await getDoc(doc(db, "establishments", user.uid));
+                    if (userDoc.exists()) {
+                        dom.establishmentNameDisplay.textContent = userDoc.data().name;
+                    }
+                    dom.authContainer.classList.add('hidden');
+                    dom.mainAppContainer.classList.remove('hidden');
+                    navigateTo('reception');
+                    setupPatientListener(); 
+                } else {
+                    if (user && user.isAnonymous) await signOut(auth);
+                    state.user = null;
+                    if(state.unsubscribe) state.unsubscribe();
+                    state.patients = [];
+                    dom.loginForm.reset();
+                    dom.registerForm.reset();
+                    dom.loginError.textContent = '';
+                    dom.registerError.textContent = '';
+                    dom.authContainer.classList.remove('hidden');
+                    dom.mainAppContainer.classList.add('hidden');
+                }
+            });
+        }
+
+        // --- LÓGICA DE AUTENTICAÇÃO ---
         dom.loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            initAudioContext(); // Desbloqueia o áudio na primeira interação do utilizador
             const email = dom.loginForm['login-email'].value;
             const password = dom.loginForm['login-password'].value;
             const submitButton = dom.loginForm.querySelector('button[type="submit"]');
@@ -417,7 +302,7 @@
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (error) {
                 dom.loginError.textContent = 'Credenciais inválidas. Verifique o seu email e senha, ou registe-se se for um novo utilizador.';
-                console.error("Erro de login:", error);
+                console.error("Erro de login:", error.code, error.message);
                 submitButton.disabled = false;
                 submitButton.textContent = 'Entrar';
             }
@@ -425,6 +310,7 @@
 
         dom.registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            initAudioContext();
             const name = dom.registerForm['register-name'].value;
             const email = dom.registerForm['register-email'].value;
             const password = dom.registerForm['register-password'].value;
@@ -436,33 +322,27 @@
 
             try {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                await setDoc(doc(db, "establishments", userCredential.user.uid), {
-                    name: name,
-                    email: email,
-                    createdAt: serverTimestamp()
-                });
+                await setDoc(doc(db, "establishments", userCredential.user.uid), { name, email, createdAt: serverTimestamp() });
             } catch (error) {
                  dom.registerError.textContent = 'Erro ao registar. O email pode já estar em uso ou a senha é muito fraca.';
-                 console.error("Erro de registo:", error);
+                 console.error("Erro de registo:", error.code, error.message);
                  submitButton.disabled = false;
                  submitButton.textContent = 'Registar';
             }
         });
         
-        dom.logoutBtn.addEventListener('click', () => signOut(auth));
-
-        dom.showRegisterBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            dom.loginView.classList.add('hidden');
-            dom.registerView.classList.remove('hidden');
+        dom.logoutBtn.addEventListener('click', () => {
+             if (qrListenerUnsubscribe) {
+                qrListenerUnsubscribe();
+                qrListenerUnsubscribe = null;
+            }
+            signOut(auth);
         });
 
-        dom.showLoginBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            dom.registerView.classList.add('hidden');
-            dom.loginView.classList.remove('hidden');
-        });
+        dom.showRegisterBtn.addEventListener('click', (e) => { e.preventDefault(); dom.loginView.classList.add('hidden'); dom.registerView.classList.remove('hidden'); });
+        dom.showLoginBtn.addEventListener('click', (e) => { e.preventDefault(); dom.registerView.classList.add('hidden'); dom.loginView.classList.remove('hidden'); });
         
+        // --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
         function setupPatientListener() {
             if (state.unsubscribe) state.unsubscribe();
             if (!state.user) return; 
@@ -481,9 +361,7 @@
             const activeViewElement = document.getElementById(`${state.currentView}-view`);
             if (activeViewElement) {
                 const templateFunction = renderTemplates[state.currentView];
-                if (templateFunction) {
-                    activeViewElement.innerHTML = templateFunction();
-                }
+                if (templateFunction) activeViewElement.innerHTML = templateFunction();
             }
 
             const lastCalled = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem');
@@ -504,8 +382,7 @@
         function navigateTo(view) {
             state.currentView = view;
             dom.views.forEach(v => v.classList.remove('active'));
-            const activeView = document.getElementById(`${view}-view`);
-            if (activeView) activeView.classList.add('active');
+            document.getElementById(`${view}-view`).classList.add('active');
             dom.navButtons.forEach(btn => btn.classList.toggle('ring-2', btn.dataset.view === view));
             render();
         }
@@ -513,7 +390,7 @@
         dom.navButtons.forEach(btn => btn.addEventListener('click', () => navigateTo(btn.dataset.view)));
 
         document.body.addEventListener('submit', async e => {
-            if (e.target.id === 'add-patient-form') {
+             if (e.target.id === 'add-patient-form') {
                 e.preventDefault();
                 const name = e.target['patient-name'].value.trim();
                 const birthdate = e.target['patient-birthdate'].value;
@@ -538,372 +415,171 @@
         document.body.addEventListener('click', async e => {
             const button = e.target.closest('button');
             if (!button) return;
-
             const action = button.dataset.action;
-
+            if (!action) return;
+            
             if (action === 'calculate-age') {
                 const birthdate = document.getElementById('patient-birthdate').value;
                 const ageDisplay = document.getElementById('calculated-age');
-                if (birthdate) {
-                    ageDisplay.textContent = calculateAge(birthdate);
-                } else {
-                    ageDisplay.textContent = 'Selecione uma data.';
-                }
+                if (birthdate) ageDisplay.textContent = calculateAge(birthdate);
+                else ageDisplay.textContent = 'Selecione uma data.';
                 return;
             }
-
-            if (action === 'listen-name') {
-                startSpeechRecognition();
-                return;
-            }
+            if (action === 'listen-name') { startSpeechRecognition(); return; }
+            if (action === 'show-qr') { showQrModal(); return; }
 
             const id = button.dataset.id;
-            // Ações sem ID não precisam de ID ou user
-            if (!action) return;
-            if (action !== 'calculate-age' && action !== 'listen-name' && (!id || !state.user)) return;
-
-
+            if (!id || !state.user) return;
             const patientRef = doc(db, `establishments/${state.user.uid}/patients`, id);
-
+            
             switch(action) {
-                case 'delete-patient':
-                    showConfirmationModal(
-                        'Tem a certeza que deseja excluir este paciente da fila?',
-                        async () => {
-                            await deleteDoc(patientRef);
-                            hideModal();
-                        }
-                    );
-                    break;
-                case 'no-show-triage':
-                    showConfirmationModal(
-                        'Confirmar não comparecimento do paciente para triagem?',
-                        async () => {
-                            await updateDoc(patientRef, { status: 'nao-compareceu-triagem', finishTimestamp: serverTimestamp() });
-                            hideModal();
-                        }
-                    );
-                    break;
-                case 'no-show-doctor':
-                    showConfirmationModal(
-                        'Confirmar não comparecimento do paciente para atendimento médico?',
-                        async () => {
-                            await updateDoc(patientRef, { status: 'nao-compareceu-medico', finishTimestamp: serverTimestamp() });
-                            hideModal();
-                        }
-                    );
-                    break;
-                case 'recall-triage':
-                    await makeCall(id, 'triage');
-                    break;
-                case 'cancel-call-triage':
-                    await updateDoc(patientRef, { status: 'aguardando-triagem' });
-                    break;
-                case 'recall-doctor':
-                    await makeCall(id, 'doctor');
-                    break;
-                case 'cancel-call-doctor':
-                    await updateDoc(patientRef, { status: 'aguardando-atendimento' });
-                    break;
-                case 'start-consultation':
-                    await updateDoc(patientRef, { status: 'em-atendimento' });
-                    break;
+                case 'delete-patient': showConfirmationModal('Tem a certeza que deseja excluir este paciente da fila?', async () => { await deleteDoc(patientRef); hideModal(); }); break;
+                case 'no-show-triage': showConfirmationModal('Confirmar não comparecimento do paciente para triagem?', async () => { await updateDoc(patientRef, { status: 'nao-compareceu-triagem', finishTimestamp: serverTimestamp() }); hideModal(); }); break;
+                case 'no-show-doctor': showConfirmationModal('Confirmar não comparecimento do paciente para atendimento médico?', async () => { await updateDoc(patientRef, { status: 'nao-compareceu-medico', finishTimestamp: serverTimestamp() }); hideModal(); }); break;
+                case 'recall-triage': await makeCall(id, 'triage'); break;
+                case 'cancel-call-triage': await updateDoc(patientRef, { status: 'aguardando-triagem' }); break;
+                case 'recall-doctor': await makeCall(id, 'doctor'); break;
+                case 'cancel-call-doctor': await updateDoc(patientRef, { status: 'aguardando-atendimento' }); break;
+                case 'start-consultation': await updateDoc(patientRef, { status: 'em-atendimento' }); break;
                 case 'call-for-triage': await makeCall(id, 'triage'); break;
-                case 'start-triage':
-                    await updateDoc(patientRef, { status: 'em-triagem', triagedBy: state.user.uid });
-                    showTriageModal(id);
-                    break;
+                case 'start-triage': await updateDoc(patientRef, { status: 'em-triagem', triagedBy: state.user.uid }); showTriageModal(id); break;
                 case 'call-patient': await makeCall(id, 'doctor'); break;
-                case 'finish-consultation': 
-                    await updateDoc(patientRef, { status: 'atendido', finishTimestamp: serverTimestamp() }); 
-                    break;
-                case 'submit-triage': {
-                    const priority = parseInt(document.getElementById('priority-select').value);
-                    if(priority) {
-                       await updateDoc(patientRef, { status: 'aguardando-atendimento', priority, triageTimestamp: serverTimestamp() });
-                       hideModal();
-                    }
-                    break;
-                }
+                case 'finish-consultation': await updateDoc(patientRef, { status: 'atendido', finishTimestamp: serverTimestamp() }); break;
+                case 'submit-triage': { const priority = parseInt(document.getElementById('priority-select').value); if(priority) { await updateDoc(patientRef, { status: 'aguardando-atendimento', priority, triageTimestamp: serverTimestamp() }); hideModal(); } break; }
             }
         });
-
-        // --- Funções Auxiliares ---
-        function calculateAge(birthDateString) {
-            if (!birthDateString) return '';
-            const birthDate = new Date(birthDateString);
-            birthDate.setUTCHours(12);
-
-            const today = new Date();
-            let years = today.getFullYear() - birthDate.getFullYear();
-            let months = today.getMonth() - birthDate.getMonth();
-            let days = today.getDate() - birthDate.getDate();
-
-            if (months < 0 || (months === 0 && days < 0)) {
-                years--;
-                months = (months + 12) % 12;
-            }
-
-            if (days < 0) {
-                const previousMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-                days += previousMonth.getDate();
-                months--;
-                 if (months < 0) {
-                    months = 11;
-                    years--;
-                }
-            }
-
-            if (years > 0) return `${years} ${years > 1 ? 'anos' : 'ano'}`;
-            if (months > 0) return `${months} ${months > 1 ? 'meses' : 'mês'}`;
-            return `${days} ${days > 1 ? 'dias' : 'dia'}`;
-        }
-
-        function startSpeechRecognition() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                showModal('<p>O seu navegador não suporta reconhecimento de voz.</p><button data-action="close-modal" class="mt-4 px-4 py-2 bg-gray-200 rounded-md">Fechar</button>');
-                return;
-            }
-
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'pt-BR';
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
-            const nameInput = document.getElementById('patient-name');
-            const micButton = document.querySelector('[data-action="listen-name"]');
-            const originalMicSVG = micButton.innerHTML;
-            micButton.innerHTML = `<svg class="h-5 w-5 text-red-500 animate-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path fill-rule="evenodd" d="M5.5 8.5A.5.5 0 016 9v1a4 4 0 004 4h.01a4 4 0 004-4V9a.5.5 0 011 0v1a5 5 0 01-4.5 4.975V17h1.5a.5.5 0 010 1h-5a.5.5 0 010-1H10v-2.025A5 5 0 015.5 10V9a.5.5 0 01.5-.5z" clip-rule="evenodd" /></svg>`;
-
-            recognition.start();
-
-            recognition.onresult = (event) => {
-                const speechResult = event.results[0][0].transcript;
-                nameInput.value = speechResult.charAt(0).toUpperCase() + speechResult.slice(1);
-            };
-
-            recognition.onspeechend = () => {
-                recognition.stop();
-            };
-
-
-
-            recognition.onend = () => {
-                 micButton.innerHTML = originalMicSVG;
-            }
-
-            recognition.onerror = (event) => {
-                console.error('Erro no reconhecimento de voz:', event.error);
-                micButton.innerHTML = originalMicSVG;
-            };
-        }
-
-        function base64ToArrayBuffer(base64) {
-            const binaryString = window.atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        function pcmToWav(pcmData, sampleRate) {
-            const numSamples = pcmData.length;
-            const numChannels = 1;
-            const bitsPerSample = 16;
-            const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-            const blockAlign = numChannels * (bitsPerSample / 8);
-            const dataSize = numSamples * numChannels * (bitsPerSample / 8);
-            const buffer = new ArrayBuffer(44 + dataSize);
-            const view = new DataView(buffer);
-
-            view.setUint32(0, 0x52494646, false); // "RIFF"
-            view.setUint32(4, 36 + dataSize, true);
-            view.setUint32(8, 0x57415645, false); // "WAVE"
-            view.setUint32(12, 0x666d7420, false); // "fmt "
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true); 
-            view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, byteRate, true);
-            view.setUint16(32, blockAlign, true);
-            view.setUint16(34, bitsPerSample, true);
-            view.setUint32(36, 0x64617461, false); // "data"
-            view.setUint32(40, dataSize, true);
-
-            let offset = 44;
-            for (let i = 0; i < numSamples; i++, offset += 2) {
-                view.setInt16(offset, pcmData[i], true);
-            }
-
-            return new Blob([view], { type: 'audio/wav' });
-        }
         
+        // --- FUNÇÕES AUXILIARES ---
+        function initAudioContext() {
+            if (audioContext) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') audioContext.resume();
+            } catch(e) {
+                console.error("A Web Audio API não é suportada neste navegador.", e);
+            }
+        }
+
         async function playGeminiTTS(text) {
-            if (geminiApiKey === "AIzaSyDG53kdnsGV6B9MxMsFyNOf1GLtPaDAo4k") {
-                console.warn("Chave da API do Gemini não configurada. A usar a voz do navegador como alternativa.");
+            if (!audioContext) { console.error("AudioContext não foi inicializado. A reprodução de áudio pode falhar."); initAudioContext(); }
+
+            try {
+                const generateSpeech = httpsCallable(functions, 'generateSpeech');
+                const result = await generateSpeech({ text });
+                const { audioData, mimeType, error } = result.data;
+
+                if (error) throw new Error(error);
+
+                if (audioData && mimeType) {
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                    if (!sampleRateMatch) throw new Error("Taxa de amostragem não encontrada.");
+                    
+                    const sampleRate = parseInt(sampleRateMatch[1], 10);
+                    const audioBuffer = audioContext.createBuffer(1, pcmData.byteLength / 2, sampleRate);
+                    const pcm16Data = new Int16Array(pcmData);
+                    const float32Data = new Float32Array(pcm16Data.length);
+                    for (let i = 0; i < pcm16Data.length; i++) {
+                        float32Data[i] = pcm16Data[i] / 32768.0;
+                    }
+                    audioBuffer.copyToChannel(float32Data, 0);
+
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(audioContext.destination);
+                    source.start();
+                } else { throw new Error("Dados de áudio inválidos recebidos da Cloud Function."); }
+            } catch (error) {
+                console.error("Erro ao chamar Cloud Function ou reproduzir áudio:", error);
+                console.warn("A usar a voz do navegador como alternativa.");
                 if ('speechSynthesis' in window) {
                     const utterance = new SpeechSynthesisUtterance(text);
                     utterance.lang = 'pt-BR';
                     window.speechSynthesis.speak(utterance);
                 }
-                return;
             }
+        }
+
+        async function showQrModal() {
+            const qrSessionId = 'qr_' + Math.random().toString(36).substr(2, 9);
+            const qrSessionRef = doc(db, `establishments/${state.user.uid}/qrSessions/${qrSessionId}`);
             
             try {
-                const payload = {
-                    contents: [{ parts: [{ text: `Diga de forma clara e com um ritmo moderado: ${text}` }] }],
-                    generationConfig: {
-                        responseModalities: ["AUDIO"],
-                        speechConfig: {
-                            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } }
-                        }
-                    },
-                    model: "gemini-2.5-flash-preview-tts"
-                };
+                await setDoc(qrSessionRef, { status: 'pending', createdAt: serverTimestamp() });
                 
-                const response = await fetch(geminiApiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                const url = `${window.location.origin}${window.location.pathname}?establishmentId=${state.user.uid}&qrSessionId=${qrSessionId}`;
+                
+                const content = `
+                    <h3 class="text-lg font-medium text-gray-900">Leitura de QR Code</h3>
+                    <p class="text-sm text-gray-600 mt-2">Peça ao paciente para ler o código abaixo com a câmara do telemóvel para inserir o seu nome.</p>
+                    <div class="flex justify-center my-4"><canvas id="qrcode-canvas"></canvas></div>
+                    <p class="text-center font-semibold">A aguardar o nome do paciente...</p>
+                    <button data-action="close-modal" class="mt-4 w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md">Cancelar</button>`;
+                showModal(content);
+
+                QRCode.toCanvas(document.getElementById('qrcode-canvas'), url, { width: 256 }, function (error) {
+                    if (error) console.error(error);
                 });
 
-                if (!response.ok) throw new Error(`API do Gemini respondeu com o status: ${response.status}`);
+                if (qrListenerUnsubscribe) qrListenerUnsubscribe();
+                qrListenerUnsubscribe = onSnapshot(qrSessionRef, (docSnap) => {
+                    if (docSnap.exists() && docSnap.data().status === 'completed') {
+                        document.getElementById('patient-name').value = docSnap.data().name;
+                        hideModal();
+                        qrListenerUnsubscribe(); 
+                        qrListenerUnsubscribe = null;
+                        deleteDoc(qrSessionRef); // Limpa o documento da sessão
+                    }
+                });
 
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-
-                if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                    if (!sampleRateMatch) throw new Error("Taxa de amostragem não encontrada");
-                    
-                    const sampleRate = parseInt(sampleRateMatch[1], 10);
-                    const pcmData = base64ToArrayBuffer(audioData);
-                    const pcm16 = new Int16Array(pcmData);
-                    const wavBlob = pcmToWav(pcm16, sampleRate);
-                    const audioUrl = URL.createObjectURL(wavBlob);
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-                } else {
-                    console.error("Dados de áudio não encontrados na resposta da API.");
-                }
             } catch (error) {
-                console.error("Erro ao gerar ou reproduzir o áudio do Gemini:", error);
+                console.error("Erro ao criar sessão QR:", error);
+                showModal('<p>Não foi possível gerar o QR code. Tente novamente.</p>');
             }
         }
 
+        function base64ToArrayBuffer(base64) { const binaryString = window.atob(base64); const len = binaryString.length; const bytes = new Uint8Array(len); for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); } return bytes.buffer; }
+        function calculateAge(birthDateString) { if (!birthDateString) return ''; const birthDate = new Date(birthDateString); birthDate.setUTCHours(12); const today = new Date(); let years = today.getFullYear() - birthDate.getFullYear(); let months = today.getMonth() - birthDate.getMonth(); let days = today.getDate() - birthDate.getDate(); if (months < 0 || (months === 0 && days < 0)) { years--; months = (months + 12) % 12; } if (days < 0) { const previousMonth = new Date(today.getFullYear(), today.getMonth(), 0); days += previousMonth.getDate(); months--; if (months < 0) { months = 11; years--; } } if (years > 0) return `${years} ${years > 1 ? 'anos' : 'ano'}`; if (months > 0) return `${months} ${months > 1 ? 'meses' : 'mês'}`; return `${days} ${days > 1 ? 'dias' : 'dia'}`; }
+        function startSpeechRecognition() { 
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; 
+            if (!SpeechRecognition) { 
+                showModal('<p>O seu navegador não suporta reconhecimento de voz.</p><button data-action="close-modal" class="mt-4 px-4 py-2 bg-gray-200 rounded-md">Fechar</button>'); 
+                return; 
+            } 
+            const recognition = new SpeechRecognition(); 
+            recognition.lang = 'pt-BR'; 
+            recognition.interimResults = false; 
+            recognition.maxAlternatives = 1; 
+            const nameInput = document.getElementById('patient-name'); 
+            const micButton = document.querySelector('[data-action="listen-name"]'); 
+            const originalMicSVG = micButton.innerHTML; 
+            micButton.innerHTML = `<svg class="h-5 w-5 text-red-500 animate-pulse" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path fill-rule="evenodd" d="M5.5 8.5A.5.5 0 016 9v1a4 4 0 004 4h.01a4 4 0 004-4V9a.5.5 0 011 0v1a5 5 0 01-4.5 4.975V17h1.5a.5.5 0 010 1h-5a.5.5 0 010-1H10v-2.025A5 5 0 015.5 10V9a.5.5 0 01.5-.5z" clip-rule="evenodd" /></svg>`; 
+            recognition.start(); 
+            recognition.onresult = (event) => { 
+                const speechResult = event.results[0][0].transcript; 
+                nameInput.value = speechResult.charAt(0).toUpperCase() + speechResult.slice(1); 
+            }; 
+            recognition.onspeechend = () => { 
+                recognition.stop(); 
+            }; 
+            recognition.onend = () => { 
+                micButton.innerHTML = originalMicSVG; 
+            }; 
+            recognition.onerror = (event) => { 
+                console.error('Erro no reconhecimento de voz:', event.error); 
+                micButton.innerHTML = originalMicSVG; 
+            }; 
+        }
         function showModal(content) { dom.modal.classList.remove('hidden'); dom.modalContent.innerHTML = content; }
-        function hideModal() { dom.modal.classList.add('hidden'); dom.modalContent.innerHTML = ''; }
+        function hideModal() { if (qrListenerUnsubscribe) { qrListenerUnsubscribe(); qrListenerUnsubscribe = null; } dom.modal.classList.add('hidden'); dom.modalContent.innerHTML = ''; }
         dom.modal.addEventListener('click', e => { if (e.target.id === 'modal' || e.target.matches('[data-action="close-modal"]')) hideModal(); });
-
-        function showConfirmationModal(message, onConfirm) {
-            const content = `
-                <p class="text-lg font-medium text-gray-800">${message}</p>
-                <div class="mt-6 flex justify-end gap-4">
-                    <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
-                    <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirmar</button>
-                </div>
-            `;
-            showModal(content);
-            
-            document.getElementById('modal-confirm-btn').onclick = onConfirm;
-            document.getElementById('modal-cancel-btn').onclick = hideModal;
-        }
-
-        async function makeCall(patientId, callType) {
-            const collectionPath = `establishments/${state.user.uid}/patients`;
-            const currentlyCalled = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem');
-            
-            if (currentlyCalled && currentlyCalled.id !== patientId) {
-                const oldPatientRef = doc(db, collectionPath, currentlyCalled.id);
-                const newStatus = currentlyCalled.status === 'chamado-medico' ? 'aguardando-atendimento' : 'aguardando-triagem';
-                await updateDoc(oldPatientRef, { status: newStatus });
-            }
-
-            const newPatientRef = doc(db, collectionPath, patientId);
-            const updateData = { 
-                status: callType === 'doctor' ? 'chamado-medico' : 'chamado-triagem', 
-                callTimestamp: serverTimestamp() 
-            };
-            if (callType === 'doctor') updateData.attendedBy = state.user.uid;
-            await updateDoc(newPatientRef, updateData);
-        }
-
-        function showTriageModal(patientId) { 
-            const patient = state.patients.find(p => p.id === patientId);
-            if (!patient) return;
-            const content = `
-                <h3 class="text-lg leading-6 font-medium text-gray-900">${patient.isPriority ? '⭐' : ''} ${patient.name}</h3>
-                <div class="mt-2 px-2 py-3">
-                    <label class="block text-sm font-medium text-gray-700 text-left">Nível de Prioridade</label>
-                    <select id="priority-select" class="mt-1 block w-full rounded-md p-2 border-gray-300">
-                        <option value="1">1 - Emergência</option> <option value="2">2 - Muito Urgente</option>
-                        <option value="3" selected>3 - Urgente</option> <option value="4">4 - Pouco Urgente</option>
-                        <option value="5">5 - Não Urgente</option>
-                    </select>
-                </div>
-                <div class="items-center px-4 py-3 bg-gray-50 -mx-5 -mb-5 mt-4 rounded-b-md">
-                    <button data-action="submit-triage" data-id="${patientId}" class="px-4 py-2 bg-green-500 text-white rounded-md w-full">Enviar para Fila Médica</button>
-                    <button data-action="close-modal" class="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md w-full">Cancelar</button>
-                </div>`;
-            showModal(content);
-         }
-
-        function formatTimestamp(ts) {
-            if (!ts) return '-';
-            return new Date(ts.seconds * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        }
-        
-        function formatFullTimestamp(ts) {
-             if (!ts) return '-';
-            return new Date(ts.seconds * 1000).toLocaleString('pt-BR', { 
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit' 
-            });
-        }
-
-        function getPriorityClass(p) {
-            switch(p) {
-                case 1: return { text: 'EMERGÊNCIA', bgc: 'bg-red-100', textc: 'text-red-800' };
-                case 2: return { text: 'MUITO URGENTE', bgc: 'bg-orange-100', textc: 'text-orange-800' };
-                case 3: return { text: 'URGENTE', bgc: 'bg-yellow-100', textc: 'text-yellow-800' };
-                case 4: return { text: 'POUCO URGENTE', bgc: 'bg-green-100', textc: 'text-green-800' };
-                case 5: return { text: 'NÃO URGENTE', bgc: 'bg-blue-100', textc: 'text-blue-800' };
-                default: return { text: 'N/A', bgc: 'bg-gray-100', textc: 'text-gray-800' };
-            }
-        }
-
-        function getFinalStatusText(status) {
-            switch(status) {
-                case 'atendido': return 'Atendido';
-                case 'nao-compareceu-triagem': return 'Não Compareceu (Triagem)';
-                case 'nao-compareceu-medico': return 'Não Compareceu (Médico)';
-                default: return 'Desconhecido';
-            }
-        }
-        
-        renderTemplates.panel = () => {
-            const called = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem');
-            let content = '<p class="text-2xl text-gray-500">Aguardando chamada...</p>';
-            if (called) {
-                const type = called.status === 'chamado-medico' ? 'Atendimento Médico' : 'Triagem';
-                content = `<div class="p-6 rounded-lg bg-blue-50 border border-blue-200 patient-called">
-                        <p class="text-4xl sm:text-5xl font-extrabold text-blue-700 break-words">${called.name}</p>
-                        <p class="text-2xl sm:text-3xl font-semibold text-gray-700 mt-2">Dirija-se à ${type}</p></div>`;
-            }
-            return `<h2 class="text-3xl font-bold mb-6 text-center text-gray-800">Painel de Chamados</h2>
-                    <div class="bg-white p-6 rounded-lg shadow-xl">
-                        <h3 class="text-xl font-semibold mb-4 text-center border-b pb-2">PACIENTE CHAMADO</h3>
-                        <div id="panel-current-call" class="text-center py-8 min-h-[150px] flex items-center justify-center">${content}</div>
-                    </div>`;
-        };
-       
-
-
+        function showConfirmationModal(message, onConfirm) { const content = ` <p class="text-lg font-medium text-gray-800">${message}</p> <div class="mt-6 flex justify-end gap-4"> <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button> <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirmar</button> </div> `; showModal(content); document.getElementById('modal-confirm-btn').onclick = onConfirm; document.getElementById('modal-cancel-btn').onclick = hideModal; }
+        async function makeCall(patientId, callType) { const collectionPath = `establishments/${state.user.uid}/patients`; const currentlyCalled = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem'); if (currentlyCalled && currentlyCalled.id !== patientId) { const oldPatientRef = doc(db, collectionPath, currentlyCalled.id); const newStatus = currentlyCalled.status === 'chamado-medico' ? 'aguardando-atendimento' : 'aguardando-triagem'; await updateDoc(oldPatientRef, { status: newStatus }); } const newPatientRef = doc(db, collectionPath, patientId); const updateData = { status: callType === 'doctor' ? 'chamado-medico' : 'chamado-triagem', callTimestamp: serverTimestamp() }; if (callType === 'doctor') updateData.attendedBy = state.user.uid; await updateDoc(newPatientRef, updateData); }
+        function showTriageModal(patientId) { const patient = state.patients.find(p => p.id === patientId); if (!patient) return; const content = ` <h3 class="text-lg leading-6 font-medium text-gray-900">${patient.isPriority ? '⭐' : ''} ${patient.name}</h3> <div class="mt-2 px-2 py-3"> <label class="block text-sm font-medium text-gray-700 text-left">Nível de Prioridade</label> <select id="priority-select" class="mt-1 block w-full rounded-md p-2 border-gray-300"> <option value="1">1 - Emergência</option> <option value="2">2 - Muito Urgente</option> <option value="3" selected>3 - Urgente</option> <option value="4">4 - Pouco Urgente</option> <option value="5">5 - Não Urgente</option> </select> </div> <div class="items-center px-4 py-3 bg-gray-50 -mx-5 -mb-5 mt-4 rounded-b-md"> <button data-action="submit-triage" data-id="${patientId}" class="px-4 py-2 bg-green-500 text-white rounded-md w-full">Enviar para Fila Médica</button> <button data-action="close-modal" class="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md w-full">Cancelar</button> </div>`; showModal(content); }
+        function formatTimestamp(ts) { if (!ts) return '-'; return new Date(ts.seconds * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+        function formatFullTimestamp(ts) { if (!ts) return '-'; return new Date(ts.seconds * 1000).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+        function getPriorityClass(p) { switch(p) { case 1: return { text: 'EMERGÊNCIA', bgc: 'bg-red-100', textc: 'text-red-800' }; case 2: return { text: 'MUITO URGENTE', bgc: 'bg-orange-100', textc: 'text-orange-800' }; case 3: return { text: 'URGENTE', bgc: 'bg-yellow-100', textc: 'text-yellow-800' }; case 4: return { text: 'POUCO URGENTE', bgc: 'bg-green-100', textc: 'text-green-800' }; case 5: return { text: 'NÃO URGENTE', bgc: 'bg-blue-100', textc: 'text-blue-800' }; default: return { text: 'N/A', bgc: 'bg-gray-100', textc: 'text-gray-800' }; } }
+        function getFinalStatusText(status) { switch(status) { case 'atendido': return 'Atendido'; case 'nao-compareceu-triagem': return 'Não Compareceu (Triagem)'; case 'nao-compareceu-medico': return 'Não Compareceu (Médico)'; default: return 'Desconhecido'; } }
     </script>
 </body>
 </html>

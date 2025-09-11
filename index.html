@@ -148,10 +148,8 @@
             lastCalledPatientId: null,
             unsubscribe: null, 
             historyData: {
-                date: '',
-                patients: [],
-                summary: null,
-                loading: false
+                daily: { date: '', patients: [], summary: null, loading: false },
+                monthly: { date: '', patients: [], summary: null, loading: false }
             }
         };
 
@@ -208,22 +206,23 @@
                         </form>
                     </div>
                     <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-semibold mb-2 border-b pb-2">Aguardando Triagem (${waitingForTriage.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Data</th><th>Cadastro</th><th>Nome</th><th>Idade</th><th>Status</th><th>Ações</th></tr></thead>
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Cadastro</th><th>Nome</th><th>P</th><th>Idade</th><th>Status</th><th>Ações</th></tr></thead>
                         <tbody>${waitingForTriage.length > 0 ? waitingForTriage.map(p => `
                             <tr class="bg-white border-b hover:bg-gray-50">
-                                <td>${formatDate(p.receptionTimestamp)}</td>
                                 <td>${formatTimestamp(p.receptionTimestamp)}</td>
-                                <td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td>
+                                <td>${p.name}</td>
+                                <td class="text-center font-bold">${p.isPriority ? 'P' : ''}</td>
+                                <td>${p.age}</td>
                                 <td><span class="px-2 py-1 text-xs rounded-full ${p.status === 'chamado-triagem' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100'}">${p.status === 'chamado-triagem' ? 'CHAMADO' : 'AGUARDANDO'}</span></td>
                                 <td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td>
                             </tr>`).join('') : '<tr><td colspan="6" class="text-center py-4">Nenhum paciente.</td></tr>'}
                         </tbody></table></div></div>`;
             },
             triage: () => { 
-                const toTriage = state.patients.filter(p => p.status === 'aguardando-triagem' || p.status === 'chamado-triagem' || (p.status === 'em-triagem' && p.triagedBy === state.user.uid)); return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Triagem</h2> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-semibold mb-2 border-b pb-2">Pacientes para Triar (${toTriage.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead> <tbody>${toTriage.length > 0 ? toTriage.map(p => { let actionsHtml; if (p.status === 'em-triagem') { actionsHtml = '<span class="text-green-700 font-semibold">Em atendimento...</span>'; } else if (p.status === 'chamado-triagem') { actionsHtml = ` <button data-action="recall-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar Novamente</button> <button data-action="cancel-call-triage" data-id="${p.id}" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Cancelar</button> <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button> <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button> `; } else { actionsHtml = ` <button data-action="call-for-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar</button> <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button> <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button> `; } return `<tr class="bg-white border-b hover:bg-gray-50 ${p.status === 'em-triagem' ? 'bg-green-50' : ''}"> <td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td> <td class="flex items-center gap-2"> <div class="flex space-x-2 w-full">${actionsHtml}</div> <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </td></tr>` }).join('') : '<tr><td colspan="3" class="text-center py-4">Nenhum paciente.</td></tr>'} </tbody></table></div></div>`;
+                const toTriage = state.patients.filter(p => p.status === 'aguardando-triagem' || p.status === 'chamado-triagem' || (p.status === 'em-triagem' && p.triagedBy === state.user.uid)); return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Triagem</h2> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl font-semibold mb-2 border-b pb-2">Pacientes para Triar (${toTriage.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Cadastro</th><th>Nome</th><th>P</th><th>Idade</th><th>Ações</th></tr></thead> <tbody>${toTriage.length > 0 ? toTriage.map(p => { let actionsHtml; if (p.status === 'em-triagem') { actionsHtml = '<span class="text-green-700 font-semibold">Em atendimento...</span>'; } else if (p.status === 'chamado-triagem') { actionsHtml = ` <button data-action="recall-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar Novamente</button> <button data-action="cancel-call-triage" data-id="${p.id}" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Cancelar</button> <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button> <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button> `; } else { actionsHtml = ` <button data-action="call-for-triage" data-id="${p.id}" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Chamar</button> <button data-action="start-triage" data-id="${p.id}" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-xs">Atender</button> <button data-action="no-show-triage" data-id="${p.id}" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-3 rounded-lg text-xs">Não Compareceu</button> `; } return `<tr class="bg-white border-b hover:bg-gray-50 ${p.status === 'em-triagem' ? 'bg-green-50' : ''}"><td>${formatTimestamp(p.receptionTimestamp)}</td><td>${p.name}</td><td class="text-center font-bold">${p.isPriority ? 'P' : ''}</td><td>${p.age}</td> <td class="flex items-center gap-2"> <div class="flex space-x-2 w-full">${actionsHtml}</div> <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </td></tr>` }).join('') : '<tr><td colspan="5" class="text-center py-4">Nenhum paciente.</td></tr>'} </tbody></table></div></div>`;
             },
             doctor: () => { 
-                const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds; const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter); const attended = state.patients.filter(p => (p.status === 'em-atendimento' || p.status === 'chamado-medico') && p.attendedBy === state.user.uid); let html = `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Atendimento Médico</h2><div class="bg-white p-6 rounded-lg shadow-md">`; if(attended.length > 0) { html += attended.map(p => { const prio = getPriorityClass(p.priority); let actionButtonsHtml; if (p.status === 'chamado-medico') { actionButtonsHtml = ` <button data-action="recall-doctor" data-id="${p.id}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Chamar Novamente</button> <button data-action="cancel-call-doctor" data-id="${p.id}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Cancelar</button> <button data-action="start-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Atender</button> <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button> `; } else { actionButtonsHtml = ` <button data-action="finish-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Finalizar</button> <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button> `; } return `<div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500 mb-6"> <div class="flex justify-between items-start"> <div><p class="font-bold text-lg">${p.isPriority ? '⭐' : ''} ${p.name} <span class="text-base font-normal text-gray-600">- ${p.age}</span></p> <span class="text-xs font-bold py-1 px-2 rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span> ${p.status === 'chamado-medico' ? `<p class="text-sm font-semibold text-red-700 mt-1">Chamado</p>` : ''}</div> <div class="flex items-center gap-2"> ${actionButtonsHtml} <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </div> </div> <div class="mt-4 border-t pt-4"> <textarea data-action="save-notes" data-id="${p.id}" class="mt-1 block w-full rounded-md p-2 border-gray-300" rows="4" placeholder="Anotações...">${p.doctorNotes || ''}</textarea> </div></div>`; }).join(''); } html += `<h3 class="text-xl font-semibold mb-2 border-b pb-2">Aguardando Atendimento (${waiting.length})</h3> <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Cadastro</th><th>Triagem</th><th>Nome</th><th>Idade</th><th>Ações</th></tr></thead><tbody>`; html += waiting.length > 0 ? waiting.map(p => { const prio = getPriorityClass(p.priority); return `<tr class="bg-white border-b hover:bg-gray-50"><td>${formatTimestamp(p.receptionTimestamp)}</td><td>${formatTimestamp(p.triageTimestamp)}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td> <td class="flex items-center gap-2"> <button data-action="call-patient" data-id="${p.id}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-xs">Chamar</button> <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </td></tr>`; }).join('') : '<tr><td colspan="5" class="text-center py-4">Nenhum paciente.</td></tr>'; html += `</tbody></table></div></div>`; return html; 
+                const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds; const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter); const attended = state.patients.filter(p => (p.status === 'em-atendimento' || p.status === 'chamado-medico') && p.attendedBy === state.user.uid); let html = `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Atendimento Médico</h2><div class="bg-white p-6 rounded-lg shadow-md">`; if(attended.length > 0) { html += attended.map(p => { const prio = getPriorityClass(p.priority); let actionButtonsHtml; if (p.status === 'chamado-medico') { actionButtonsHtml = ` <button data-action="recall-doctor" data-id="${p.id}" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Chamar Novamente</button> <button data-action="cancel-call-doctor" data-id="${p.id}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Cancelar</button> <button data-action="start-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg text-sm">Atender</button> <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button> `; } else { actionButtonsHtml = ` <button data-action="finish-consultation" data-id="${p.id}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Finalizar</button> <button data-action="no-show-doctor" data-id="${p.id}" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg text-sm">Não Compareceu</button> `; } return `<div class="bg-white p-4 rounded-lg shadow-md border-l-4 border-red-500 mb-6"> <div class="flex justify-between items-start"> <div><p class="font-bold text-lg">${p.name} <span class="text-base font-normal text-gray-600">- ${p.age}</span></p> <span class="text-xs font-bold py-1 px-2 rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span> ${p.status === 'chamado-medico' ? `<p class="text-sm font-semibold text-red-700 mt-1">Chamado</p>` : ''}</div> <div class="flex items-center gap-2"> ${actionButtonsHtml} <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </div> </div> <div class="mt-4 border-t pt-4"> <textarea data-action="save-notes" data-id="${p.id}" class="mt-1 block w-full rounded-md p-2 border-gray-300" rows="4" placeholder="Anotações...">${p.doctorNotes || ''}</textarea> </div></div>`; }).join(''); } html += `<h3 class="text-xl font-semibold mb-2 border-b pb-2">Aguardando Atendimento (${waiting.length})</h3> <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Cadastro</th><th>Triagem</th><th>Nome</th><th>P</th><th>Idade</th><th>Ações</th></tr></thead><tbody>`; html += waiting.length > 0 ? waiting.map(p => { const prio = getPriorityClass(p.priority); return `<tr class="bg-white border-b hover:bg-gray-50"><td>${formatTimestamp(p.receptionTimestamp)}</td><td>${formatTimestamp(p.triageTimestamp)}</td><td>${p.name}</td><td class="text-center font-bold">${p.isPriority ? 'P' : ''}</td><td>${p.age}</td> <td class="flex items-center gap-2"> <button data-action="call-patient" data-id="${p.id}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-xs">Chamar</button> <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </td></tr>`; }).join('') : '<tr><td colspan="6" class="text-center py-4">Nenhum paciente.</td></tr>'; html += `</tbody></table></div></div>`; return html; 
             },
             panel: () => { 
                 const called = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem'); let content = '<p class="text-2xl text-gray-500">Aguardando chamada...</p>'; if (called) { const type = called.status === 'chamado-medico' ? 'Atendimento Médico' : 'Triagem'; content = `<div class="p-6 rounded-lg bg-blue-50 border border-blue-200 patient-called"> <p class="text-4xl sm:text-5xl font-extrabold text-blue-700 break-words">${called.name}</p> <p class="text-2xl sm:text-3xl font-semibold text-gray-700 mt-2">Dirija-se à ${type}</p></div>`; } return `<h2 class="text-3xl font-bold mb-6 text-center text-gray-800">Painel de Chamados</h2> <div class="bg-white p-6 rounded-lg shadow-xl"> <h3 class="text-xl font-semibold mb-4 text-center border-b pb-2">PACIENTE CHAMADO</h3> <div id="panel-current-call" class="text-center py-8 min-h-[150px] flex items-center justify-center">${content}</div> </div>`; 
@@ -234,25 +233,38 @@
                 const attendedToday = state.patients.filter(p => p.status === 'atendido' && p.receptionTimestamp && p.receptionTimestamp.toDate() >= today);
                 const sorter = (a, b) => (a.priority || 99) - (b.priority || 99) || (b.isPriority ? -1 : 1) - (a.isPriority ? -1 : 1) || a.triageTimestamp?.seconds - b.triageTimestamp?.seconds; 
                 const waiting = state.patients.filter(p => p.status === 'aguardando-atendimento').sort(sorter); 
-                return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Acompanhamento do Dia</h2> <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Fila de Atendimento Médico (${waiting.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Prioridade</th><th>Nome</th></tr></thead><tbody> ${waiting.length > 0 ? waiting.map(p => { const prio = getPriorityClass(p.priority); return `<tr class="bg-white border-b"><td class="font-medium ${prio.textc} ${prio.bgc}">${prio.text}</td><td>${p.isPriority ? '⭐' : ''} ${p.name}</td></tr>`}).join('') : '<tr><td colspan="2" class="text-center py-4">Fila vazia.</td></tr>'} </tbody></table></div></div> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Pacientes Atendidos Hoje (${attendedToday.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Nome</th><th>Idade</th></tr></thead><tbody> ${attendedToday.length > 0 ? attendedToday.map(p => `<tr class="bg-white border-b"><td>${p.isPriority ? '⭐' : ''} ${p.name}</td><td>${p.age}</td></tr>`).join('') : '<tr><td colspan="2" class="text-center py-4">Nenhum atendido hoje.</td></tr>'} </tbody></table></div></div> </div>`; 
+                return `<h2 class="text-2xl font-semibold mb-4 text-gray-700">Acompanhamento do Dia</h2> <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Fila de Atendimento Médico (${waiting.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Cadastro</th><th>Prioridade</th><th>Nome</th><th>P</th><th>Ações</th></tr></thead><tbody> ${waiting.length > 0 ? waiting.map(p => { const prio = getPriorityClass(p.priority); return `<tr class="bg-white border-b"><td>${formatTimestamp(p.receptionTimestamp)}</td><td class="font-medium ${prio.textc} ${prio.bgc}">${prio.text}</td><td>${p.name}</td><td class="text-center font-bold">${p.isPriority ? 'P' : ''}</td><td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td></tr>`}).join('') : '<tr><td colspan="5" class="text-center py-4">Fila vazia.</td></tr>'} </tbody></table></div></div> <div class="bg-white p-6 rounded-lg shadow-md"><h3 class="text-xl text-center border-b pb-2 mb-4">Pacientes Atendidos Hoje (${attendedToday.length})</h3><div class="overflow-x-auto"><table class="w-full text-sm"> <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Cadastro</th><th>Nome</th><th>P</th><th>Idade</th><th>Ações</th></tr></thead><tbody> ${attendedToday.length > 0 ? attendedToday.map(p => `<tr class="bg-white border-b"><td>${formatTimestamp(p.receptionTimestamp)}</td><td>${p.name}</td><td class="text-center font-bold">${p.isPriority ? 'P' : ''}</td><td>${p.age}</td><td><button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button></td></tr>`).join('') : '<tr><td colspan="5" class="text-center py-4">Nenhum atendido hoje.</td></tr>'} </tbody></table></div></div> </div>`; 
             },
             history: () => { 
-                let summaryHtml = '';
-                if (state.historyData.summary) {
-                    const { total, classificationCounts } = state.historyData.summary;
+                let dailySummaryHtml = '';
+                if (state.historyData.daily.summary) {
+                    const { total, classificationCounts } = state.historyData.daily.summary;
                     const classifications = Object.entries(classificationCounts).map(([level, count]) => {
                         const { text, bgc, textc } = getPriorityClass(parseInt(level));
                         return `<div class="p-2 rounded-md ${bgc} ${textc} text-sm"><strong>${text}:</strong> ${count}</div>`;
                     }).join('');
-
-                    summaryHtml = `
+                    dailySummaryHtml = `
                         <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-                            <h3 class="text-xl font-semibold mb-4 border-b pb-2">Resumo do Dia ${formatDate(state.historyData.date, true)}</h3>
+                            <h3 class="text-xl font-semibold mb-4 border-b pb-2">Resumo do Dia ${formatDate(state.historyData.daily.date, true)}</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="bg-blue-50 p-4 rounded-lg text-center">
-                                    <p class="text-3xl font-bold text-blue-700">${total}</p>
-                                    <p class="text-sm font-medium text-blue-600">Total de Atendimentos</p>
-                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg text-center"><p class="text-3xl font-bold text-blue-700">${total}</p><p class="text-sm font-medium text-blue-600">Total de Atendimentos</p></div>
+                                <div class="space-y-2">${classifications}</div>
+                            </div>
+                        </div>`;
+                }
+
+                let monthlySummaryHtml = '';
+                if (state.historyData.monthly.summary) {
+                     const { total, classificationCounts } = state.historyData.monthly.summary;
+                    const classifications = Object.entries(classificationCounts).map(([level, count]) => {
+                        const { text, bgc, textc } = getPriorityClass(parseInt(level));
+                        return `<div class="p-2 rounded-md ${bgc} ${textc} text-sm"><strong>${text}:</strong> ${count}</div>`;
+                    }).join('');
+                    monthlySummaryHtml = `
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                            <h3 class="text-xl font-semibold mb-4 border-b pb-2">Resumo do Mês ${formatMonth(state.historyData.monthly.date)}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-purple-50 p-4 rounded-lg text-center"><p class="text-3xl font-bold text-purple-700">${total}</p><p class="text-sm font-medium text-purple-600">Total de Atendimentos no Mês</p></div>
                                 <div class="space-y-2">${classifications}</div>
                             </div>
                         </div>`;
@@ -260,30 +272,41 @@
                 
                 return ` <h2 class="text-2xl font-semibold mb-4 text-gray-700">Histórico de Atendimentos</h2>
                     <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-                        <div class="flex items-end gap-4">
-                            <div>
-                                <label for="history-date" class="block text-sm font-medium text-gray-700">Selecione a Data</label>
-                                <input type="date" id="history-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                            <div class="flex items-end gap-4">
+                                <div>
+                                    <label for="history-date" class="block text-sm font-medium text-gray-700">Selecione a Data</label>
+                                    <input type="date" id="history-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                                </div>
+                                <button data-action="fetch-history" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">${state.historyData.daily.loading ? 'Buscando...' : 'Buscar Dia'}</button>
                             </div>
-                            <button data-action="fetch-history" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">${state.historyData.loading ? 'Buscando...' : 'Buscar'}</button>
+                            <div class="flex items-end gap-4">
+                                <div>
+                                    <label for="history-month" class="block text-sm font-medium text-gray-700">Selecione o Mês</label>
+                                    <input type="month" id="history-month" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                                </div>
+                                <button data-action="fetch-monthly-history" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">${state.historyData.monthly.loading ? 'Buscando...' : 'Buscar Mês'}</button>
+                            </div>
                         </div>
                     </div>
-                    ${summaryHtml}
+                    ${monthlySummaryHtml}
+                    ${dailySummaryHtml}
                     <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 border-b pb-2">Detalhes dos Atendimentos do Dia</h3>
                         <div class="overflow-x-auto"> <table class="w-full text-sm">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th>Paciente</th><th>Cadastro</th><th>Triagem</th><th>Atendimento</th><th>Status</th><th>Risco</th></tr></thead>
                         <tbody>
-                            ${state.historyData.patients.length > 0 ? state.historyData.patients.map(p => {
+                            ${state.historyData.daily.patients.length > 0 ? state.historyData.daily.patients.map(p => {
                                 const prio = getPriorityClass(p.priority);
                                 return `<tr class="bg-white border-b hover:bg-gray-50">
-                                    <td>${p.isPriority ? '⭐' : ''} ${p.name}</td>
+                                    <td>${p.name}</td>
                                     <td>${formatTimestamp(p.receptionTimestamp)}</td>
                                     <td>${formatTimestamp(p.triageTimestamp)}</td>
                                     <td>${formatTimestamp(p.callTimestamp)}</td>
                                     <td>${getFinalStatusText(p.status)}</td>
                                     <td><span class="px-2 py-1 text-xs rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span></td>
                                 </tr>`
-                            }).join('') : `<tr><td colspan="6" class="text-center py-4">${state.historyData.date ? 'Nenhum paciente encontrado para esta data.' : 'Selecione uma data para buscar.'}</td></tr>`}
+                            }).join('') : `<tr><td colspan="6" class="text-center py-4">${state.historyData.daily.date ? 'Nenhum paciente encontrado para esta data.' : 'Selecione uma data para buscar.'}</td></tr>`}
                         </tbody>
                         </table></div>
                     </div>
@@ -423,9 +446,17 @@
             if (activeViewElement) {
                 const templateFunction = renderTemplates[state.currentView];
                 if (templateFunction) activeViewElement.innerHTML = templateFunction();
-                if (state.currentView === 'history' && !state.historyData.date) {
+                if (state.currentView === 'history' && !state.historyData.daily.date) {
                     const dateInput = document.getElementById('history-date');
-                    if (dateInput) dateInput.valueAsDate = new Date();
+                    const monthInput = document.getElementById('history-month');
+                    if (dateInput) {
+                        const today = new Date();
+                        const year = today.getFullYear();
+                        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+                        const day = today.getDate().toString().padStart(2, '0');
+                        dateInput.value = `${year}-${month}-${day}`;
+                        monthInput.value = `${year}-${month}`;
+                    }
                 }
             }
 
@@ -481,12 +512,22 @@
             if (action === 'calculate-age') { const birthdate = document.getElementById('patient-birthdate').value; const ageDisplay = document.getElementById('calculated-age'); if (birthdate) ageDisplay.textContent = calculateAge(birthdate); else ageDisplay.textContent = 'Selecione uma data.'; return; }
             if (action === 'listen-name') { startSpeechRecognition(); return; }
             if (action === 'show-qr') { showQrModal(); return; }
-            if (action === 'fetch-history') { await fetchHistory(); return; }
+            if (action === 'fetch-history') { await fetchHistory('daily'); return; }
+            if (action === 'fetch-monthly-history') { await fetchHistory('monthly'); return; }
 
             const id = button.dataset.id;
             if (!id || !state.user) return;
             const patientRef = doc(db, `establishments/${state.user.uid}/patients`, id);
             
+            if (action === 'submit-triage-priority') {
+                const priority = parseInt(button.dataset.priority);
+                if(priority) { 
+                    await updateDoc(patientRef, { status: 'aguardando-atendimento', priority, triageTimestamp: serverTimestamp() }); 
+                    hideModal(); 
+                }
+                return;
+            }
+
             switch(action) {
                 case 'delete-patient': showConfirmationModal('Tem a certeza que deseja excluir este paciente?', async () => { await deleteDoc(patientRef); hideModal(); }); break;
                 case 'no-show-triage': showConfirmationModal('Confirmar não comparecimento do paciente para triagem?', async () => { await updateDoc(patientRef, { status: 'nao-compareceu-triagem', finishTimestamp: serverTimestamp() }); hideModal(); }); break;
@@ -500,55 +541,61 @@
                 case 'start-triage': await updateDoc(patientRef, { status: 'em-triagem', triagedBy: state.user.uid }); showTriageModal(id); break;
                 case 'call-patient': await makeCall(id, 'doctor'); break;
                 case 'finish-consultation': await updateDoc(patientRef, { status: 'atendido', finishTimestamp: serverTimestamp() }); break;
-                case 'submit-triage': { const priority = parseInt(document.getElementById('priority-select').value); if(priority) { await updateDoc(patientRef, { status: 'aguardando-atendimento', priority, triageTimestamp: serverTimestamp() }); hideModal(); } break; }
             }
         });
         
         // --- FUNÇÕES AUXILIARES ---
-        async function fetchHistory() {
+        async function fetchHistory(type) {
             if (!state.user) return;
-            const dateInput = document.getElementById('history-date');
-            if (!dateInput || !dateInput.value) {
-                showModal('<p>Por favor, selecione uma data válida.</p>');
-                return;
-            }
-            state.historyData.loading = true;
-            render(); 
+            
+            let start, end, dateForState;
+            if (type === 'daily') {
+                const dateInput = document.getElementById('history-date');
+                if (!dateInput || !dateInput.value) { showModal('<p>Por favor, selecione uma data válida.</p>'); return; }
+                state.historyData.daily.loading = true;
+                
+                // CORREÇÃO: Tratar a data localmente para evitar problemas de fuso horário
+                const [year, month, day] = dateInput.value.split('-').map(Number);
+                start = new Date(year, month - 1, day, 0, 0, 0, 0);
+                end = new Date(year, month - 1, day, 23, 59, 59, 999);
+                dateForState = start;
 
-            const date = new Date(dateInput.value);
-            const startOfDay = new Date(date.setHours(0, 0, 0, 0));
-            const endOfDay = new Date(date.setHours(23, 59, 59, 999));
-            state.historyData.date = startOfDay;
+            } else { // monthly
+                const monthInput = document.getElementById('history-month');
+                if (!monthInput || !monthInput.value) { showModal('<p>Por favor, selecione um mês válido.</p>'); return; }
+                state.historyData.monthly.loading = true;
+                const [year, month] = monthInput.value.split('-').map(Number);
+                start = new Date(year, month - 1, 1);
+                end = new Date(year, month, 0, 23, 59, 59, 999);
+                dateForState = start;
+            }
+            render();
 
             try {
                 const collectionPath = `establishments/${state.user.uid}/patients`;
-                const q = query(collection(db, collectionPath), 
-                    where("receptionTimestamp", ">=", startOfDay), 
-                    where("receptionTimestamp", "<=", endOfDay),
-                    orderBy("receptionTimestamp", "desc")
-                );
+                const q = query(collection(db, collectionPath), where("receptionTimestamp", ">=", start), where("receptionTimestamp", "<=", end));
                 const querySnapshot = await getDocs(q);
                 const patients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                state.historyData.patients = patients;
-
-                const summary = {
-                    total: patients.length,
-                    classificationCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-                };
-                patients.forEach(p => {
-                    if (p.priority && summary.classificationCounts[p.priority] !== undefined) {
-                        summary.classificationCounts[p.priority]++;
-                    }
-                });
-                state.historyData.summary = summary;
-
+                
+                const summary = { total: patients.length, classificationCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
+                patients.forEach(p => { if (p.priority && summary.classificationCounts[p.priority] !== undefined) { summary.classificationCounts[p.priority]++; }});
+                
+                if (type === 'daily') {
+                    state.historyData.daily.patients = patients.sort((a,b) => b.receptionTimestamp.seconds - a.receptionTimestamp.seconds);
+                    state.historyData.daily.date = dateForState;
+                    state.historyData.daily.summary = summary;
+                } else {
+                    state.historyData.monthly.date = dateForState;
+                    state.historyData.monthly.summary = summary;
+                }
             } catch(error) {
                 console.error("Erro ao buscar histórico:", error);
-                state.historyData.patients = [];
-                state.historyData.summary = null;
-                showModal('<p>Ocorreu um erro ao buscar o histórico. Tente novamente.</p>');
+                if (type === 'daily') { state.historyData.daily.patients = []; state.historyData.daily.summary = null; } 
+                else { state.historyData.monthly.summary = null; }
+                showModal('<p>Ocorreu um erro ao buscar o histórico. Verifique se o Firestore está configurado corretamente.</p>');
             } finally {
-                state.historyData.loading = false;
+                if (type === 'daily') state.historyData.daily.loading = false;
+                else state.historyData.monthly.loading = false;
                 render();
             }
         }
@@ -612,15 +659,60 @@
 
         function base64ToArrayBuffer(base64) { const b = window.atob(base64); const l = b.length; const u = new Uint8Array(l); for (let i = 0; i < l; i++) { u[i] = b.charCodeAt(i); } return u.buffer; }
         function calculateAge(birthDateString) { if (!birthDateString) return ''; const birthDate = new Date(birthDateString); birthDate.setUTCHours(12); const today = new Date(); let years = today.getFullYear() - birthDate.getFullYear(); let months = today.getMonth() - birthDate.getMonth(); let days = today.getDate() - birthDate.getDate(); if (months < 0 || (months === 0 && days < 0)) { years--; months = (months + 12) % 12; } if (days < 0) { const p = new Date(today.getFullYear(), today.getMonth(), 0); days += p.getDate(); months--; if (months < 0) { months = 11; years--; } } if (years > 0) return `${years} ${years > 1 ? 'anos' : 'ano'}`; if (months > 0) return `${months} ${months > 1 ? 'meses' : 'mês'}`; return `${days} ${days > 1 ? 'dias' : 'dia'}`; }
-        function startSpeechRecognition() { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) { showModal('<p>O seu navegador não suporta reconhecimento de voz.</p>'); return; } const r = new SR(); r.lang = 'pt-BR'; r.interimResults = false; r.maxAlternatives = 1; const i = document.getElementById('patient-name'); const b = document.querySelector('[data-action="listen-name"]'); const s = b.innerHTML; b.innerHTML = `<svg class="h-5 w-5 text-red-500 animate-pulse" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path fill-rule="evenodd" d="M5.5 8.5A.5.5 0 016 9v1a4 4 0 004 4h.01a4 4 0 004-4V9a.5.5 0 011 0v1a5 5 0 01-4.5 4.975V17h1.5a.5.5 0 010 1h-5a.5.5 0 010-1H10v-2.025A5 5 0 015.5 10V9a.5.5 0 01.5-.5z" clip-rule="evenodd" /></svg>`; r.start(); r.onresult = (e) => { const t = e.results[0][0].transcript; i.value = t.charAt(0).toUpperCase() + t.slice(1); }; r.onspeechend = () => r.stop(); r.onend = () => b.innerHTML = s; r.onerror = (e) => { console.error('Erro:', e.error); b.innerHTML = s; }; }
+        function startSpeechRecognition() { 
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition; 
+            if (!SR) { 
+                showModal('<p>O seu navegador não suporta reconhecimento de voz.</p>'); 
+                return; 
+            } 
+            const r = new SR(); 
+            r.lang = 'pt-BR'; 
+            r.interimResults = false; 
+            r.maxAlternatives = 1; 
+            const i = document.getElementById('patient-name'); 
+            const b = document.querySelector('[data-action="listen-name"]'); 
+            const s = b.innerHTML; 
+            b.innerHTML = `<svg class="h-5 w-5 text-red-500 animate-pulse" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path fill-rule="evenodd" d="M5.5 8.5A.5.5 0 016 9v1a4 4 0 004 4h.01a4 4 0 004-4V9a.5.5 0 011 0v1a5 5 0 01-4.5 4.975V17h1.5a.5.5 0 010 1h-5a.5.5 0 010-1H10v-2.025A5 5 0 015.5 10V9a.5.5 0 01.5-.5z" clip-rule="evenodd" /></svg>`; 
+            r.start(); 
+            r.onresult = (e) => { 
+                const t = e.results[0][0].transcript; 
+                i.value = t.charAt(0).toUpperCase() + t.slice(1); 
+            }; 
+            r.onspeechend = () => r.stop(); 
+            r.onend = () => b.innerHTML = s; 
+            r.onerror = (e) => { 
+                console.error('Erro:', e.error); 
+                b.innerHTML = s; 
+            }; 
+        }
         function showModal(content) { dom.modal.classList.remove('hidden'); dom.modalContent.innerHTML = content; }
         function hideModal() { if (qrListenerUnsubscribe) { qrListenerUnsubscribe(); qrListenerUnsubscribe = null; } dom.modal.classList.add('hidden'); dom.modalContent.innerHTML = ''; }
         dom.modal.addEventListener('click', e => { if (e.target.id === 'modal' || e.target.matches('[data-action="close-modal"]')) hideModal(); });
         function showConfirmationModal(message, onConfirm) { const c = ` <p class="text-lg font-medium text-gray-800">${message}</p> <div class="mt-6 flex justify-end gap-4"> <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 rounded-md">Cancelar</button> <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-md">Confirmar</button> </div> `; showModal(c); document.getElementById('modal-confirm-btn').onclick = onConfirm; document.getElementById('modal-cancel-btn').onclick = hideModal; }
         async function makeCall(patientId, callType) { const c = `establishments/${state.user.uid}/patients`; const p = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem'); if (p && p.id !== patientId) { const r = doc(db, c, p.id); const s = p.status === 'chamado-medico' ? 'aguardando-atendimento' : 'aguardando-triagem'; await updateDoc(r, { status: s }); } const n = doc(db, c, patientId); const d = { status: callType === 'doctor' ? 'chamado-medico' : 'chamado-triagem', callTimestamp: serverTimestamp() }; if (callType === 'doctor') d.attendedBy = state.user.uid; await updateDoc(n, d); }
-        function showTriageModal(patientId) { const p = state.patients.find(p => p.id === patientId); if (!p) return; const c = ` <h3 class="text-lg font-medium">${p.isPriority ? '⭐' : ''} ${p.name}</h3> <div class="mt-2 py-3"> <label class="block text-sm text-left">Nível de Prioridade</label> <select id="priority-select" class="mt-1 block w-full p-2 border-gray-300 rounded-md"> <option value="1">1 - Emergência</option> <option value="2">2 - Muito Urgente</option> <option value="3" selected>3 - Urgente</option> <option value="4">4 - Pouco Urgente</option> <option value="5">5 - Não Urgente</option> </select> </div> <div class="items-center px-4 py-3 bg-gray-50 -mx-5 -mb-5 mt-4 rounded-b-md"> <button data-action="submit-triage" data-id="${p.id}" class="w-full px-4 py-2 bg-green-500 text-white rounded-md">Enviar para Fila</button> <button data-action="close-modal" class="mt-2 w-full px-4 py-2 bg-gray-200 rounded-md">Cancelar</button> </div>`; showModal(c); }
+        function showTriageModal(patientId) {
+            const patient = state.patients.find(p => p.id === patientId);
+            if (!patient) return;
+            const content = `
+                <h3 class="text-lg leading-6 font-medium text-gray-900">${patient.name}</h3>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 text-left mb-2">Selecione o Nível de Prioridade</label>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button data-action="submit-triage-priority" data-id="${patientId}" data-priority="1" class="w-full text-left p-3 rounded-lg font-bold bg-red-600 hover:bg-red-700 text-white">1 - EMERGÊNCIA</button>
+                        <button data-action="submit-triage-priority" data-id="${patientId}" data-priority="2" class="w-full text-left p-3 rounded-lg font-bold bg-orange-500 hover:bg-orange-600 text-white">2 - MUITO URGENTE</button>
+                        <button data-action="submit-triage-priority" data-id="${patientId}" data-priority="3" class="w-full text-left p-3 rounded-lg font-bold bg-yellow-400 hover:bg-yellow-500 text-black">3 - URGENTE</button>
+                        <button data-action="submit-triage-priority" data-id="${patientId}" data-priority="4" class="w-full text-left p-3 rounded-lg font-bold bg-green-500 hover:bg-green-600 text-white">4 - POUCO URGENTE</button>
+                        <button data-action="submit-triage-priority" data-id="${patientId}" data-priority="5" class="w-full text-left p-3 rounded-lg font-bold bg-blue-500 hover:bg-blue-600 text-white">5 - NÃO URGENTE</button>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <button data-action="close-modal" class="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md">Cancelar</button>
+                </div>`;
+            showModal(content);
+        }
         function formatTimestamp(ts) { if (!ts) return '-'; return new Date(ts.seconds * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
         function formatDate(ts, fromDateObject = false) { if (!ts) return '-'; const date = fromDateObject ? ts : new Date(ts.seconds * 1000); return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });}
+        function formatMonth(date) { if (!date) return ''; return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase());}
         function formatFullTimestamp(ts) { if (!ts) return '-'; return new Date(ts.seconds * 1000).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
         function getPriorityClass(p) { switch(p) { case 1: return { text: 'EMERGÊNCIA', bgc: 'bg-red-100', textc: 'text-red-800' }; case 2: return { text: 'MUITO URGENTE', bgc: 'bg-orange-100', textc: 'text-orange-800' }; case 3: return { text: 'URGENTE', bgc: 'bg-yellow-100', textc: 'text-yellow-800' }; case 4: return { text: 'POUCO URGENTE', bgc: 'bg-green-100', textc: 'text-green-800' }; case 5: return { text: 'NÃO URGENTE', bgc: 'bg-blue-100', textc: 'text-blue-800' }; default: return { text: 'N/A', bgc: 'bg-gray-100', textc: 'text-gray-800' }; } }
         function getFinalStatusText(status) { switch(status) { case 'atendido': return 'Atendido'; case 'nao-compareceu-triagem': return 'Não Compareceu (Triagem)'; case 'nao-compareceu-medico': return 'Não Compareceu (Médico)'; default: 'Finalizado'; } }

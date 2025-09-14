@@ -17,6 +17,24 @@
         }
         .patient-called { animation: pulse 2s infinite; }
         th, td { padding: 12px 16px; text-align: left; }
+
+        .teleprompter-container {
+            overflow: hidden;
+            width: 100%;
+            background-color: #1a202c;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+        .teleprompter-text {
+            white-space: nowrap;
+            display: inline-block;
+            animation: scroll-left 15s linear infinite;
+        }
+        @keyframes scroll-left {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -96,6 +114,7 @@
                         <button data-view="triage" class="nav-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Triagem</button>
                         <button data-view="doctor" class="nav-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Médico</button>
                         <button data-view="panel" class="nav-btn bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Painel</button>
+                        <button data-view="announcements" class="nav-btn bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Avisos</button>
                         <button data-view="monitoring" class="nav-btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Acompanhamento</button>
                         <button data-view="history" class="nav-btn bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm">Histórico</button>
                     </nav>
@@ -106,6 +125,7 @@
             <main id="triage-view" class="view"></main>
             <main id="doctor-view" class="view"></main>
             <main id="panel-view" class="view"></main>
+            <main id="announcements-view" class="view"></main>
             <main id="monitoring-view" class="view"></main>
             <main id="history-view" class="view"></main>
         </div>
@@ -140,13 +160,18 @@
 
         let audioContext = null;
         let qrListenerUnsubscribe = null;
+        let announcementsUnsubscribe = null;
+        let currentAnnouncementUnsubscribe = null;
 
         const state = {
             user: null,
             patients: [],
+            announcementTemplates: [],
+            currentAnnouncement: null,
             currentView: 'reception',
             lastCalledPatientId: null,
             unsubscribe: null, 
+            isPanelAudioActive: false,
             historyData: {
                 daily: { date: '', patients: [], summary: null, loading: false },
                 monthly: { date: '', patients: [], summary: null, loading: false }
@@ -227,7 +252,69 @@
                     return `<tr class="bg-white border-b hover:bg-gray-50"><td>${formatTimestamp(p.receptionTimestamp)}</td><td>${formatTimestamp(p.triageTimestamp)}</td><td><span class="px-2 py-1 text-xs rounded-full ${prio.bgc} ${prio.textc}">${prio.text}</span></td><td>${p.name}</td><td class="text-center font-bold">${p.isPriority ? 'P' : ''}</td><td>${p.age}</td> <td class="flex items-center gap-2"> <button data-action="call-patient" data-id="${p.id}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg text-xs">Chamar</button> <button data-action="delete-patient" data-id="${p.id}" class="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100" title="Excluir Cadastro"> <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg> </button> </td></tr>`; }).join('') : '<tr><td colspan="7" class="text-center py-4">Nenhum paciente.</td></tr>'; html += `</tbody></table></div></div>`; return html; 
             },
             panel: () => { 
-                const called = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem'); let content = '<p class="text-2xl text-gray-500">Aguardando chamada...</p>'; if (called) { const type = called.status === 'chamado-medico' ? 'Atendimento Médico' : 'Triagem'; content = `<div class="p-6 rounded-lg bg-blue-50 border border-blue-200 patient-called"> <p class="text-4xl sm:text-5xl font-extrabold text-blue-700 break-words">${called.name}</p> <p class="text-2xl sm:text-3xl font-semibold text-gray-700 mt-2">Dirija-se à ${type}</p></div>`; } return `<h2 class="text-3xl font-bold mb-6 text-center text-gray-800">Painel de Chamados</h2> <div class="bg-white p-6 rounded-lg shadow-xl"> <h3 class="text-xl font-semibold mb-4 text-center border-b pb-2">PACIENTE CHAMADO</h3> <div id="panel-current-call" class="text-center py-8 min-h-[150px] flex items-center justify-center">${content}</div> </div>`; 
+                if (!state.isPanelAudioActive) {
+                    return `
+                        <h2 class="text-3xl font-bold mb-6 text-center text-gray-800">Painel de Chamados</h2>
+                        <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+                            <p class="text-xl font-semibold text-gray-700 mb-4">O som do painel está desativado.</p>
+                            <p class="text-gray-500 mb-6">Clique no botão abaixo para ativar os avisos sonoros neste dispositivo.</p>
+                            <button data-action="activate-panel-audio" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg">
+                                Ativar Som
+                            </button>
+                        </div>
+                    `;
+                }
+
+                let content = '<p class="text-2xl text-gray-500">Aguardando chamada...</p>';
+                if (state.currentAnnouncement && state.currentAnnouncement.text) {
+                    content = `
+                        <div class="text-center">
+                            <p class="text-3xl sm:text-4xl font-extrabold text-red-600 break-words mb-4">AVISO</p>
+                            <div class="teleprompter-container">
+                                <p class="text-2xl sm:text-3xl font-semibold teleprompter-text">${state.currentAnnouncement.text}</p>
+                            </div>
+                        </div>`;
+                } else {
+                    const called = state.patients.find(p => p.status === 'chamado-medico' || p.status === 'chamado-triagem');
+                    if (called) {
+                        const type = called.status === 'chamado-medico' ? 'Atendimento Médico' : 'Triagem';
+                        content = `<div class="p-6 rounded-lg bg-blue-50 border border-blue-200 patient-called">
+                                   <p class="text-4xl sm:text-5xl font-extrabold text-blue-700 break-words">${called.name}</p>
+                                   <p class="text-2xl sm:text-3xl font-semibold text-gray-700 mt-2">Dirija-se à ${type}</p></div>`;
+                    }
+                }
+                return `<h2 class="text-3xl font-bold mb-6 text-center text-gray-800">Painel de Chamados</h2>
+                        <div class="bg-white p-6 rounded-lg shadow-xl">
+                            <div id="panel-current-call" class="text-center py-8 min-h-[150px] flex items-center justify-center">${content}</div>
+                        </div>`;
+            },
+            announcements: () => {
+                const templatesHtml = state.announcementTemplates.map(template => `
+                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                        <p class="text-gray-700 text-left flex-1">${template.text}</p>
+                        <button data-action="play-template-announcement" data-id="${template.id}" class="p-2 bg-green-500 hover:bg-green-600 text-white rounded-full ml-4" title="Reproduzir Modelo">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" /></svg>
+                        </button>
+                    </div>
+                `).join('');
+
+                return `
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-700">Avisos Sonoros</h2>
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                        <h3 class="text-xl font-semibold mb-4 border-b pb-2">Emitir Novo Aviso</h3>
+                        <div class="space-y-4">
+                            <textarea id="announcement-text" class="w-full p-2 border rounded-md" rows="3" placeholder="Digite a sua mensagem aqui..."></textarea>
+                            <div class="flex gap-4">
+                                <button data-action="play-announcement" class="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg">Reproduzir</button>
+                                <button data-action="create-announcement-template" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg">Criar Modelo</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 border-b pb-2">Modelos Salvos</h3>
+                        <div class="space-y-2">${templatesHtml || '<p class="text-gray-500">Nenhum modelo salvo.</p>'}</div>
+                    </div>
+                `;
             },
             monitoring: () => { 
                 const today = new Date();
@@ -356,12 +443,14 @@
                     dom.authContainer.classList.add('hidden');
                     dom.mainAppContainer.classList.remove('hidden');
                     navigateTo('reception');
-                    setupPatientListener(); 
+                    setupAllListeners(); 
                 } else {
                     if (user && user.isAnonymous) await signOut(auth);
                     state.user = null;
                     if(state.unsubscribe) state.unsubscribe();
                     state.patients = [];
+                    if(announcementsUnsubscribe) announcementsUnsubscribe();
+                    if(currentAnnouncementUnsubscribe) currentAnnouncementUnsubscribe();
                     dom.loginForm.reset();
                     dom.registerForm.reset();
                     dom.loginError.textContent = '';
@@ -418,10 +507,7 @@
         });
         
         dom.logoutBtn.addEventListener('click', () => {
-             if (qrListenerUnsubscribe) {
-                qrListenerUnsubscribe();
-                qrListenerUnsubscribe = null;
-            }
+             if (qrListenerUnsubscribe) { qrListenerUnsubscribe(); qrListenerUnsubscribe = null; }
             signOut(auth);
         });
 
@@ -429,17 +515,54 @@
         dom.showLoginBtn.addEventListener('click', (e) => { e.preventDefault(); dom.registerView.classList.add('hidden'); dom.loginView.classList.remove('hidden'); });
         
         // --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
+        function setupAllListeners() {
+            setupPatientListener();
+            setupAnnouncementsListener();
+            setupCurrentAnnouncementListener();
+        }
+
         function setupPatientListener() {
             if (state.unsubscribe) state.unsubscribe();
             if (!state.user) return; 
-
-            const collectionPath = `establishments/${state.user.uid}/patients`;
-            const q = query(collection(db, collectionPath), orderBy("receptionTimestamp", "desc"));
-            
-            state.unsubscribe = onSnapshot(q, (querySnapshot) => {
-                state.patients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const q = query(collection(db, `establishments/${state.user.uid}/patients`), orderBy("receptionTimestamp", "desc"));
+            state.unsubscribe = onSnapshot(q, (snapshot) => {
+                state.patients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 render();
-            }, (error) => console.error("Erro ao buscar pacientes: ", error));
+            });
+        }
+
+        function setupAnnouncementsListener() {
+            if (announcementsUnsubscribe) announcementsUnsubscribe();
+            if (!state.user) return;
+            const q = query(collection(db, `establishments/${state.user.uid}/announcementTemplates`), orderBy("createdAt", "desc"));
+            announcementsUnsubscribe = onSnapshot(q, (snapshot) => {
+                state.announcementTemplates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (state.currentView === 'announcements') render();
+            });
+        }
+
+        function setupCurrentAnnouncementListener() {
+            if (currentAnnouncementUnsubscribe) currentAnnouncementUnsubscribe();
+            if (!state.user) return;
+            const announcementRef = doc(db, `establishments/${state.user.uid}/currentAnnouncement/latest`);
+            currentAnnouncementUnsubscribe = onSnapshot(announcementRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (state.currentView === 'panel') {
+                        if ((!state.currentAnnouncement || state.currentAnnouncement.createdAt?.seconds !== data.createdAt?.seconds) && state.isPanelAudioActive) {
+                            state.currentAnnouncement = data;
+                            playGeminiTTS(data.text);
+                            render();
+                            setTimeout(() => {
+                                state.currentAnnouncement = null;
+                                render();
+                            }, 15000); // Duração da animação
+                        }
+                    } else {
+                         state.currentAnnouncement = null;
+                    }
+                }
+            });
         }
 
         function render() {
@@ -466,14 +589,17 @@
             if (lastCalled && state.lastCalledPatientId !== lastCalled.id) {
                 state.lastCalledPatientId = lastCalled.id;
                 
-                const bellSound = new Audio('https://actions.google.com/sounds/v1/events/bell_notification.ogg');
-                bellSound.play().catch(e => console.log("A reprodução do sino falhou:", e));
-
-                bellSound.addEventListener('ended', () => {
-                    const destination = lastCalled.status === 'chamado-medico' ? 'Atendimento Médico' : 'Triagem';
-                    const textToSpeak = `${lastCalled.name}, dirija-se à ${destination}.`;
-                    playGeminiTTS(textToSpeak);
-                });
+                if (state.currentView === 'panel' && state.isPanelAudioActive) {
+                    playAudio('https://actions.google.com/sounds/v1/events/bell_notification.ogg').then(sound => {
+                        if (sound) {
+                            sound.addEventListener('ended', () => {
+                                const destination = lastCalled.status === 'chamado-medico' ? 'Atendimento Médico' : 'Triagem';
+                                const textToSpeak = `${lastCalled.name}, dirija-se à ${destination}.`;
+                                playGeminiTTS(textToSpeak);
+                            });
+                        }
+                    });
+                }
             }
         }
         
@@ -485,7 +611,10 @@
             render();
         }
         
-        dom.navButtons.forEach(btn => btn.addEventListener('click', () => navigateTo(btn.dataset.view)));
+        dom.navButtons.forEach(btn => {
+             if (btn.dataset.action === 'open-popup') return;
+             btn.addEventListener('click', () => navigateTo(btn.dataset.view));
+        });
 
         document.body.addEventListener('submit', async e => {
              if (e.target.id === 'add-patient-form') {
@@ -505,6 +634,12 @@
             }
         });
         
+        async function triggerAnnouncement(text) {
+             if (!text || !state.user) return;
+             const announcementRef = doc(db, `establishments/${state.user.uid}/currentAnnouncement/latest`);
+             await setDoc(announcementRef, { text, createdAt: serverTimestamp() });
+        }
+
         document.body.addEventListener('click', async e => {
             const button = e.target.closest('button');
             if (!button) return;
@@ -516,6 +651,11 @@
             if (action === 'show-qr') { showQrModal(); return; }
             if (action === 'fetch-history') { await fetchHistory('daily'); return; }
             if (action === 'fetch-monthly-history') { await fetchHistory('monthly'); return; }
+            if (action === 'open-popup') { window.open('https://www.google.com/search?q=bulário+digital', 'Consulta', 'width=800,height=600'); return; }
+            if (action === 'play-announcement') { const text = document.getElementById('announcement-text').value; await triggerAnnouncement(text); return; }
+            if (action === 'create-announcement-template') { const text = document.getElementById('announcement-text').value; if(text) { await addDoc(collection(db, `establishments/${state.user.uid}/announcementTemplates`), { text, createdAt: serverTimestamp() }); document.getElementById('announcement-text').value = ''; } return; }
+            if (action === 'play-template-announcement') { const template = state.announcementTemplates.find(t => t.id === button.dataset.id); if (template) await triggerAnnouncement(template.text); return; }
+            if (action === 'activate-panel-audio') { initAudioContext(); state.isPanelAudioActive = true; render(); return; }
 
             const id = button.dataset.id;
             if (!id || !state.user) return;
@@ -556,7 +696,6 @@
                 if (!dateInput || !dateInput.value) { showModal('<p>Por favor, selecione uma data válida.</p>'); return; }
                 state.historyData.daily.loading = true;
                 
-                // CORREÇÃO: Tratar a data localmente para evitar problemas de fuso horário
                 const [year, month, day] = dateInput.value.split('-').map(Number);
                 start = new Date(year, month - 1, day, 0, 0, 0, 0);
                 end = new Date(year, month - 1, day, 23, 59, 59, 999);
@@ -603,22 +742,67 @@
         }
 
         function initAudioContext() {
-            if (audioContext) return;
+            if (audioContext) {
+                if(audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                return;
+            };
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioContext.state === 'suspended') audioContext.resume();
-            } catch(e) { console.error("A Web Audio API não é suportada neste navegador.", e); }
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                console.log("AudioContext inicializado com sucesso.");
+            } catch(e) { 
+                console.error("A Web Audio API não é suportada neste navegador.", e); 
+            }
+        }
+
+        async function playAudio(audioUrl) {
+            if (!audioContext) {
+                console.warn("AudioContext não inicializado. Tentando ativar...");
+                initAudioContext();
+                if (!audioContext) {
+                    console.error("Não foi possível inicializar o AudioContext. A reprodução de áudio está bloqueada.");
+                    return null;
+                }
+            }
+             if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+            
+            const sound = new Audio(audioUrl);
+            try {
+                await sound.play();
+                console.log("Sino de notificação reproduzido.");
+                return sound;
+            } catch (err) {
+                console.error("Erro ao reproduzir o sino:", err);
+                return null;
+            }
         }
 
         async function playGeminiTTS(text) {
-            if (!audioContext) { console.error("AudioContext não inicializado."); initAudioContext(); if (!audioContext) { console.warn("Fallback para voz do navegador."); if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(text); u.lang = 'pt-BR'; window.speechSynthesis.speak(u); } return; }}
+            if (!audioContext) { 
+                console.error("AudioContext não inicializado ao tentar reproduzir TTS."); 
+                initAudioContext(); 
+                if (!audioContext) { 
+                     console.warn("Fallback para voz do navegador (AudioContext falhou)."); 
+                     if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(text); u.lang = 'pt-BR'; window.speechSynthesis.speak(u); } 
+                     return; 
+                }
+            }
+            
             console.log("Chamando Cloud Function 'generateSpeech'...");
             try {
                 const generateSpeech = httpsCallable(functions, 'generateSpeech');
                 const result = await generateSpeech({ text });
+                console.log("Recebida resposta da Cloud Function.");
                 const { audioData, mimeType, error } = result.data;
                 if (error) throw new Error(error);
                 if (audioData && mimeType) {
+                    console.log("A descodificar dados de áudio...");
                     const pcmData = base64ToArrayBuffer(audioData);
                     const sampleRateMatch = mimeType.match(/rate=(\d+)/);
                     if (!sampleRateMatch) throw new Error("Taxa de amostragem não encontrada.");
@@ -631,7 +815,9 @@
                     const source = audioContext.createBufferSource();
                     source.buffer = audioBuffer;
                     source.connect(audioContext.destination);
+                    console.log("A iniciar a reprodução de áudio TTS.");
                     source.start();
+                    source.onended = () => console.log("Reprodução de áudio TTS concluída.");
                 } else { throw new Error("Dados de áudio inválidos da Cloud Function."); }
             } catch (error) {
                 console.error("Erro na Cloud Function ou reprodução de áudio:", error);
